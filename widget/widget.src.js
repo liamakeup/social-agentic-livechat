@@ -26,7 +26,7 @@
   '.b{max-width:88%;padding:9px 13px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere}.u{align-self:flex-end;background:var(--ub);color:var(--uf);border-bottom-right-radius:4px}.t{align-self:flex-start;background:var(--bb);border-bottom-left-radius:4px}' +
   '.t pre{background:rgba(0,0,0,.08);padding:8px;border-radius:8px;overflow-x:auto;margin:6px 0;font-size:12px}:host([data-theme=dark]) .t pre{background:rgba(0,0,0,.35)}.t code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}.t a{color:var(--a)}' +
   '.c{display:inline-block;min-width:16px;padding:0 4px;margin:0 1px;border-radius:6px;background:var(--a);color:#fff!important;font-size:10px;font-weight:700;text-align:center;text-decoration:none;vertical-align:super;line-height:14px}' +
-  '.sr{align-self:flex-start;max-width:88%;font-size:12px;color:var(--mu)}.sr a{display:inline-block;margin:3px 4px 0 0;padding:2px 8px;border:1px solid var(--bd);border-radius:999px;color:var(--fg);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sr a:hover{border-color:var(--a)}' +
+  '.sr{align-self:flex-start;max-width:88%;font-size:12px;color:var(--mu)}.sr a,.sr span{display:inline-block;margin:3px 4px 0 0;padding:2px 8px;border:1px solid var(--bd);border-radius:999px;color:var(--fg);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sr a:hover{border-color:var(--a)}' +
   '.e{color:#dc2626}.d span{display:inline-block;width:6px;height:6px;margin:0 2px;border-radius:50%;background:var(--mu);animation:k 1s infinite}.d span:nth-child(2){animation-delay:.2s}.d span:nth-child(3){animation-delay:.4s}@keyframes k{0%,80%,100%{opacity:.3}40%{opacity:1}}' +
   '.f{display:flex;gap:8px;padding:12px;border-top:1px solid var(--bd)}.f textarea{flex:1;resize:none;border:1px solid var(--bd);border-radius:10px;padding:9px 12px;font:inherit;color:var(--fg);background:var(--bg);outline:none;max-height:120px}.f textarea:focus{border-color:var(--a)}.f button{width:40px;border-radius:10px;background:var(--a);color:#fff}.f button:disabled{opacity:.5;cursor:default}' +
   '.w{text-align:center;font-size:11px;color:var(--mu);padding:0 0 8px}.w a{color:inherit}' +
@@ -57,6 +57,7 @@
   applyTheme();
   if (cfg.theme === 'auto' && matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
+  function isLink(u) { return /^https?:\/\//i.test(String(u || '')); }
   function esc(x) { return String(x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   // Minimal Markdown: fenced code, inline code, bold, bullets, [n] citations.
@@ -68,7 +69,7 @@
       .replace(/^#{1,6} (.*)$/gm, '<b>$1</b>')
       .replace(/^\s*[-*] /gm, '• ')
       .replace(/\[(\d+)\](?:\[(\d+)\])*/g, function (m) {
-        return m.replace(/\[(\d+)\]/g, function (_, n) { var x = src[n - 1]; return x ? '<a class="c" href="' + esc(x.url) + '" target="_blank" rel="noopener" title="' + esc(x.title) + '">' + n + '</a>' : '[' + n + ']'; });
+        return m.replace(/\[(\d+)\]/g, function (_, n) { var x = src[n - 1]; return !x ? '[' + n + ']' : isLink(x.url) ? '<a class="c" href="' + esc(x.url) + '" target="_blank" rel="noopener" title="' + esc(x.title) + '">' + n + '</a>' : '<span class="c" title="' + esc(x.title) + '">' + n + '</span>'; });
       });
     return h.replace(/\u0000(\d+)\u0000/g, function (_, i) { return blocks[i]; });
   }
@@ -84,7 +85,12 @@
 
   function showSources(src) {
     var seen = {}, html = '';
-    src.forEach(function (x) { if (!seen[x.url]) { seen[x.url] = 1; html += '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || x.url) + '</a>'; } });
+    src.forEach(function (x) {
+      if (seen[x.url]) return;
+      seen[x.url] = 1;
+      // Knowledge docs entered in the admin UI have a "kb:<id>" url: show the title as plain text.
+      html += isLink(x.url) ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || x.url) + '</a>' : '<span>' + esc(x.title || 'Knowledge base') + '</span>';
+    });
     if (!html) return;
     var el = document.createElement('div');
     el.className = 'sr';

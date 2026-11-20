@@ -64,10 +64,23 @@ RERANK = "true"
 DAILY_CHAT_LIMIT = "250"
 # Days of chat log (queries table) to keep; older rows are deleted hourly ("0" = keep forever).
 QUERY_RETENTION_DAYS = "90"
+# Optional OpenAI-compatible fallback LLM (Groq, DeepSeek, OpenRouter, ...), used when Workers AI fails or
+# runs out of quota. Active only when FALLBACK_BASE_URL, FALLBACK_MODEL and the FALLBACK_API_KEY secret are
+# all set. Settings saved in the admin UI (/api/settings) override these values.
+FALLBACK_BASE_URL = ""
+FALLBACK_MODEL = ""
+# "cf-first" (default) | "external-first" | "cf-only" | "external-only".
+AI_PROVIDER_STRATEGY = "cf-first"
+# Remote MCP server (Streamable HTTP) for the social livechat agent, e.g. "https://mcp.zernio.com/mcp".
+MCP_URL = ""
 
 # Secrets (set with `bunx wrangler secret put <NAME>`, never commit them):
-#   ADMIN_TOKEN - bearer token required by the /api/sites/* management endpoints. At least 16 characters;
-#                 the .dev.vars.example value only works on localhost.
+#   ADMIN_TOKEN      - bearer token required by the /api/sites/* management endpoints. At least 16 characters;
+#                      the .dev.vars.example value only works on localhost.
+#   FALLBACK_API_KEY - API key of the fallback LLM provider (optional).
+#   MCP_TOKEN        - bearer token of the MCP server (optional).
+#   SETTINGS_KEY     - key material used to encrypt secrets saved from the admin UI (optional; defaults to
+#                      ADMIN_TOKEN, so rotating ADMIN_TOKEN without it means re-entering those secrets).
 
 [observability]
 enabled = true

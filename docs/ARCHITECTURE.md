@@ -41,6 +41,7 @@ Workers AI calls are plain `env.AI.run(model, input)` invocations; Cloudflare ha
 erDiagram
     sites ||--o{ pages : has
     sites ||--o{ queries : logs
+    sites ||--o{ knowledge_docs : has
     sites {
         TEXT id PK "slug chosen by the operator"
         TEXT domain "hostname allowed to embed the widget"
@@ -66,13 +67,15 @@ erDiagram
     }
 ```
 
+Migration `0002_social_livechat.sql` adds `knowledge_docs` (text entered in the admin UI, indexed like a page with the pseudo page id `kb-<docId>`), `app_settings` (admin-editable settings that override env vars; secrets AES-GCM encrypted) and `social_conversations` / `social_messages` (social livechat state; `UNIQUE (conversation_row_id, external_message_id)` is the idempotency key that guarantees each customer message is answered at most once).
+
 The `pages` table doubles as the **indexing queue**: `status = 'pending'` rows are picked up oldest-first by the cron handler. Page ids are deterministic (hash of the site id and the URL), so re-indexing is idempotent, two sites can list the same URL and vector ids (`<pageId>-<chunkIndex>`) can be reconstructed for deletion without storing them.
 
 ## Vector layout (Vectorize)
 
 - Index: 1024 dimensions, cosine metric, matching `@cf/baai/bge-m3` (multilingual, so a question in one language can match pages in another).
 - **One namespace per site** (`namespace = siteId`). Queries are scoped with `{ namespace }`, which gives hard tenant isolation without creating a metadata index for filtering.
-- Vector id: `<pageId>-<chunkIndex>`.
+- Vector id: `<pageId>-<chunkIndex>`; knowledge docs use `kb-<docId>-<chunkIndex>` and source url `kb:<docId>` (rendered as plain text by the widget).
 - Metadata (flat, < 10 KiB): `siteId`, `pageId`, `url`, `title`, `chunk`, `text`. Storing the chunk text in metadata means the chat path needs **no D1 read** to build the prompt.
 
 ## Indexing flow
@@ -228,6 +231,13 @@ The full answer is accumulated while streaming and written to D1 after the strea
 ## Observability
 
 Structured JSON lines are logged for batches (`index.batch`), page failures (`index.page_failed`), rate limits (`index.rate_limited`), chat log retention (`queries.pruned`), interrupted answers (`chat.stream_failed`), Workers AI errors (`ai_error`) and unhandled errors. With `[observability] enabled = true` they are visible in the Cloudflare dashboard's Workers Logs. `GET /api/sites/:siteId/status` exposes queue counts, and the `queries` table is the analytics source for "what are people asking".
+
+## Hybrid LLM and social livechat
+
+- **Fallback LLM** (`src/services/ai.ts`): text generation goes through `generateHybridAnswer` / `generateHybridAnswerStream`. With an OpenAI-compatible provider configured (base URL + model + key), `cf-first` hands over to it on any Workers AI error (rate limit, `AiError`, 25 s timeout for non-streaming); `external-first` is the reverse. Streaming falls back only before a stream is returned. Every hand-over logs `llm.fallback`.
+- **Shared RAG** (`src/services/rag.ts`): `retrieve` + `answerQuestion` are used by `/api/chat`, the admin test chat and the social agent. An optional persona (`prompt.systemPrompt`) replaces the first line of the system prompt.
+- **MCP client** (`src/services/mcp.ts`): Streamable HTTP JSON-RPC (`initialize` → `notifications/initialized` → `tools/*`), JSON or SSE responses, `Mcp-Session-Id` reuse, optional proxy tool (Zernio `call_tool`). Each tool call logs `mcp.tool`.
+- **Social agent** (`src/services/social-agent.ts`): run by the cron trigger every `pollIntervalMinutes` (or `POST /api/social/poll`). Lists unread conversations, checks the newest message is an incoming one written after social replies were enabled, claims it by inserting its `social_messages` row (`ON CONFLICT DO NOTHING`), then hands off (human requested / no knowledge), drafts, or sends. Each poll first recovers interrupted rows (`claimed` older than 5 minutes → `failed`, `sending` → `unknown`). Conversations with AI turned off or nothing new are skipped without using a reply slot; new messages in AI-off conversations are recorded as `needs_human`. A newer draft marks older drafts of the same conversation `superseded`. Only a definite rejection marks a send `failed`; a timeout or lost acknowledgement marks it `unknown`, and resending that needs `confirmUnknown: true`. Admin sends claim the message with one conditional `UPDATE … SET status = 'sending'`. The subrequest budget (about 40 per tick, shared with the crawler batch) caps replies per tick at `replyCap` (at most 4), reported by the poll.
 
 ## Extension points
 

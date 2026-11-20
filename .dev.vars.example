@@ -3,3 +3,17 @@
 # This exact value (and any token shorter than 16 characters) is accepted on localhost only: a deployed
 # Worker answers 503 admin_token_weak until a real token is set.
 ADMIN_TOKEN=dev-token-change-me
+
+# Optional OpenAI-compatible fallback LLM (all three must be set to enable it).
+FALLBACK_BASE_URL=
+FALLBACK_MODEL=
+FALLBACK_API_KEY=
+# cf-first | external-first | cf-only | external-only
+AI_PROVIDER_STRATEGY=cf-first
+
+# Optional remote MCP server for the social livechat agent.
+MCP_URL=
+MCP_TOKEN=
+
+# Optional key for encrypting secrets saved from the admin UI (defaults to ADMIN_TOKEN).
+SETTINGS_KEY=

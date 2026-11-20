@@ -9,134 +9,42 @@
  *   GET    /api/sites/:siteId/status     indexing progress                           (admin)
  *   GET    /api/sites/:siteId/queries    recent chat log                             (admin)
  *   DELETE /api/sites/:siteId            remove a site and its vectors               (admin)
+ *   *      /api/sites/:siteId/knowledge  direct knowledge docs (see routes/knowledge.ts) (admin)
+ *   POST   /api/sites/:siteId/test-chat  RAG answer for the admin UI                 (admin)
+ *   GET/POST /api/settings, /api/mcp/*, /api/social/*  (see routes/social.ts)         (admin)
  *   POST   /api/chat                     RAG answer (JSON or SSE stream)             (public, origin-checked, rate-limited)
  *   GET    /widget.js                    embeddable widget (also served as a static asset)
  *   GET    /admin                        admin UI (static asset public/admin.html)
  */
 import { Hono } from 'hono';
-import type { Context, MiddlewareHandler } from 'hono';
-import { Db, emptyProgress, type SiteRow } from './db/schema';
+import { intVar, loadConfig } from './config';
+import { Db, emptyProgress } from './db/schema';
+import { readJson, requireAdmin, requireHttpUrl, requireQuestion, requireSite, requireSiteId, sanitizeHistory } from './http';
+import { registerKnowledgeRoutes } from './routes/knowledge';
+import { socialAdminRoutes } from './routes/social';
 import {
   AiRateLimitError,
   CHAT_MODEL,
   EMBEDDING_MODEL,
+  ExternalAiError,
   RERANK_MODEL,
   buildRagMessages,
-  embedQuery,
-  generateAnswer,
-  generateAnswerStream,
-  rerankChunks,
+  generateHybridAnswer,
+  generateHybridAnswerStream,
   textToWorkersAiStream,
-  toSources,
 } from './services/ai';
 import { CrawlError } from './services/crawler';
 import { getProgress, processPendingPages, registerSite, removeSite } from './services/indexer';
+import { NO_CONTEXT_ANSWER, retrieve } from './services/rag';
+import { loadSettings } from './services/settings';
+import { pollSocialInbox } from './services/social-agent';
 import { buildChatStream } from './services/stream';
-import { MAX_TOP_K, diversify, searchChunks } from './services/vectorize';
-import { cors, isOriginAllowed, normalizeDomain, parseAllowedOrigins } from './utils/cors';
-import { timingSafeEqual } from './utils/hash';
-import {
-  HttpError,
-  type AppBindings,
-  type AppConfig,
-  type ChatMessage,
-  type ChatRequest,
-  type ChatResponse,
-  type Env,
-  type IndexSiteRequest,
-} from './types';
+import { cors, isOriginAllowed, normalizeDomain } from './utils/cors';
+import { HttpError, type AppBindings, type ChatRequest, type ChatResponse, type Env, type IndexSiteRequest } from './types';
 
-const SITE_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
-const MAX_QUESTION_CHARS = 1000;
-const MAX_HISTORY_ENTRIES = 10;
-const NO_CONTEXT_ANSWER =
-  "I couldn't find anything about that in this documentation. Try rephrasing your question or using different keywords.";
-/** Without the reranker, over-fetch this many times TOP_K so the per-page cap still has candidates. */
-const OVERFETCH_FACTOR = 3;
-/**
- * Example ADMIN_TOKEN values shipped in .dev.vars.example (which the Deploy to Cloudflare wizard
- * pre-fills). They, and anything shorter than MIN_ADMIN_TOKEN_CHARS, only work on localhost.
- */
-const PLACEHOLDER_ADMIN_TOKENS = new Set(['dev-token-change-me']);
-const MIN_ADMIN_TOKEN_CHARS = 16;
 /** Window for DAILY_CHAT_LIMIT. */
 const CHAT_LIMIT_WINDOW_HOURS = 24;
 const AI_ERROR_MESSAGE = 'The AI model is unavailable right now. Please try again later.';
-
-// ---------------------------------------------------------------------------
-// Configuration helpers
-// ---------------------------------------------------------------------------
-
-function intVar(value: string | undefined, fallback: number, min: number, max: number): number {
-  const n = Number.parseInt(value ?? '', 10);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function boolVar(value: string | undefined, fallback: boolean): boolean {
-  const v = value?.trim().toLowerCase();
-  if (!v) return fallback;
-  return !['0', 'false', 'no', 'off'].includes(v);
-}
-
-function loadConfig(env: Env): AppConfig {
-  return {
-    maxPages: intVar(env.MAX_PAGES, 200, 1, 5000),
-    indexBatchSize: intVar(env.INDEX_BATCH_SIZE, 3, 1, 50),
-    topK: intVar(env.TOP_K, 4, 1, 20),
-    rerank: boolVar(env.RERANK, true),
-    allowedOrigins: parseAllowedOrigins(env.ALLOWED_ORIGINS),
-    dailyChatLimit: intVar(env.DAILY_CHAT_LIMIT, 250, 0, 1_000_000),
-    queryRetentionDays: intVar(env.QUERY_RETENTION_DAYS, 90, 0, 36_500),
-  };
-}
-
-async function readJson<T>(c: Context<AppBindings>): Promise<T> {
-  try {
-    return (await c.req.json()) as T;
-  } catch {
-    throw new HttpError(400, 'Request body must be valid JSON', 'invalid_json');
-  }
-}
-
-function requireSiteId(value: unknown): string {
-  if (typeof value !== 'string' || !SITE_ID_PATTERN.test(value)) {
-    throw new HttpError(
-      400,
-      'siteId must be 1-64 characters of letters, numbers, "-" or "_"',
-      'invalid_site_id',
-    );
-  }
-  return value.toLowerCase();
-}
-
-function requireHttpUrl(value: unknown, field: string): URL {
-  if (typeof value !== 'string') throw new HttpError(400, `${field} is required`, 'invalid_url');
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new HttpError(400, `${field} must be an absolute URL`, 'invalid_url');
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new HttpError(400, `${field} must use http or https`, 'invalid_url');
-  }
-  return url;
-}
-
-function sanitizeHistory(value: unknown): ChatMessage[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter(
-      (m): m is ChatMessage =>
-        !!m &&
-        typeof m === 'object' &&
-        (m.role === 'user' || m.role === 'assistant') &&
-        typeof m.content === 'string' &&
-        m.content.trim().length > 0,
-    )
-    .slice(-MAX_HISTORY_ENTRIES);
-}
 
 /** The site domain from the request body, or null when it was not given. */
 function optionalDomain(value: unknown): string | null {
@@ -147,51 +55,6 @@ function optionalDomain(value: unknown): string | null {
   }
   return domain;
 }
-
-/** True for requests served by `wrangler dev` (the URL host is the one Cloudflare routed on, not spoofable). */
-function isLocalRequest(url: string): boolean {
-  const host = new URL(url).hostname;
-  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
-}
-
-async function requireSite(db: Db, siteId: string): Promise<SiteRow> {
-  const site = await db.getSite(siteId);
-  if (!site) throw new HttpError(404, `Site "${siteId}" is not registered`, 'site_not_found');
-  return site;
-}
-
-// ---------------------------------------------------------------------------
-// Middleware
-// ---------------------------------------------------------------------------
-
-/** Bearer-token guard for management routes. */
-const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
-  const expected = c.env.ADMIN_TOKEN;
-  if (!expected) {
-    throw new HttpError(
-      503,
-      'ADMIN_TOKEN is not configured. Run `bunx wrangler secret put ADMIN_TOKEN` (or add it to .dev.vars).',
-      'admin_token_missing',
-    );
-  }
-  if (
-    (expected.length < MIN_ADMIN_TOKEN_CHARS || PLACEHOLDER_ADMIN_TOKENS.has(expected)) &&
-    !isLocalRequest(c.req.url)
-  ) {
-    throw new HttpError(
-      503,
-      `ADMIN_TOKEN is the example value or shorter than ${MIN_ADMIN_TOKEN_CHARS} characters. ` +
-        'Set a long random one with `bunx wrangler secret put ADMIN_TOKEN` (e.g. `openssl rand -hex 32`).',
-      'admin_token_weak',
-    );
-  }
-  const header = c.req.header('Authorization') ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-  if (!token || !timingSafeEqual(token, expected)) {
-    throw new HttpError(401, 'Invalid or missing admin token', 'unauthorized');
-  }
-  await next();
-};
 
 // ---------------------------------------------------------------------------
 // App
@@ -213,7 +76,7 @@ app.onError((err, c) => {
   if (err instanceof CrawlError) {
     return c.json({ error: err.message, code: 'crawl_error' }, 422);
   }
-  if (err.name === 'AiError') {
+  if (err.name === 'AiError' || err instanceof ExternalAiError) {
     // Workers AI failures (model deprecated, unavailable, bad input): a 502 instead of a bare 500. The
     // details go to the logs only; /api/chat is public.
     console.error(JSON.stringify({ event: 'ai_error', message: err.message }));
@@ -225,6 +88,7 @@ app.onError((err, c) => {
 
 app.notFound((c) => c.json({ error: 'Not found', code: 'not_found' }, 404));
 
+/** Public and cheap: no D1 read, nothing about the fallback provider or the social integration. */
 app.get('/api/health', (c) =>
   c.json({
     ok: true,
@@ -340,7 +204,10 @@ sites.delete('/:siteId', async (c) => {
   return c.json({ siteId, deleted: true, ...result });
 });
 
+registerKnowledgeRoutes(sites);
+
 app.route('/api/sites', sites);
+app.route('/api', socialAdminRoutes);
 
 // --- Chat --------------------------------------------------------------------
 
@@ -349,11 +216,7 @@ app.post('/api/chat', async (c) => {
   const body = await readJson<Partial<ChatRequest>>(c);
 
   const siteId = requireSiteId(body.siteId);
-  const question = typeof body.question === 'string' ? body.question.trim() : '';
-  if (!question) throw new HttpError(400, 'question is required', 'invalid_question');
-  if (question.length > MAX_QUESTION_CHARS) {
-    throw new HttpError(400, `question must be at most ${MAX_QUESTION_CHARS} characters`, 'invalid_question');
-  }
+  const question = requireQuestion(body.question);
   const history = sanitizeHistory(body.history);
   const wantsStream = body.stream === true;
 
@@ -387,13 +250,8 @@ app.post('/api/chat', async (c) => {
     );
   }
 
-  // Retrieval: vector candidates → (cross-encoder rerank) → at most MAX_CHUNKS_PER_PAGE per page.
-  const queryVector = await embedQuery(c.env.AI, question);
-  const candidateCount = config.rerank ? MAX_TOP_K : Math.min(config.topK * OVERFETCH_FACTOR, MAX_TOP_K);
-  const candidates = await searchChunks(c.env.VECTOR_INDEX, siteId, queryVector, candidateCount);
-  const ranked = config.rerank ? await rerankChunks(c.env.AI, question, candidates) : candidates;
-  const chunks = diversify(ranked, config.topK);
-  const sources = toSources(chunks);
+  const settings = await loadSettings(c.env);
+  const { chunks, sources } = await retrieve(c.env, config, siteId, question);
   const id = crypto.randomUUID();
   const persist = (answer: string) => db.logQuery(id, siteId, question, answer);
 
@@ -402,7 +260,11 @@ app.post('/api/chat', async (c) => {
     const aiStream =
       chunks.length === 0
         ? textToWorkersAiStream(NO_CONTEXT_ANSWER)
-        : await generateAnswerStream(c.env.AI, buildRagMessages(question, chunks, history, site.domain));
+        : await generateHybridAnswerStream(
+            c.env.AI,
+            buildRagMessages(question, chunks, history, site.domain, settings.prompt.systemPrompt),
+            settings.fallback,
+          );
 
     const { stream, finished } = buildChatStream(id, sources, aiStream, persist);
     c.executionCtx.waitUntil(finished);
@@ -421,7 +283,11 @@ app.post('/api/chat', async (c) => {
   const answer =
     chunks.length === 0
       ? NO_CONTEXT_ANSWER
-      : await generateAnswer(c.env.AI, buildRagMessages(question, chunks, history, site.domain));
+      : await generateHybridAnswer(
+          c.env.AI,
+          buildRagMessages(question, chunks, history, site.domain, settings.prompt.systemPrompt),
+          settings.fallback,
+        );
 
   c.executionCtx.waitUntil(persist(answer));
   const response: ChatResponse = { id, answer, sources };
@@ -436,8 +302,9 @@ export default {
   fetch: app.fetch,
 
   /**
-   * Cron trigger (every minute): crawl the next batch of pending pages across all sites, and once an
-   * hour delete chat log rows older than QUERY_RETENTION_DAYS.
+   * Cron trigger (every minute): crawl the next batch of pending pages across all sites, once an hour
+   * delete chat log rows older than QUERY_RETENTION_DAYS, and every mcp.pollIntervalMinutes poll the
+   * social inbox when social replies are on.
    */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     const config = loadConfig(env);
@@ -455,5 +322,15 @@ export default {
           }, logFailure('queries.prune_failed')),
       );
     }
+
+    const minute = Math.floor(controller.scheduledTime / 60_000);
+    ctx.waitUntil(
+      loadSettings(env)
+        .then((settings) => {
+          if (settings.mcp.socialMode === 'off' || minute % settings.mcp.pollIntervalMinutes !== 0) return;
+          return pollSocialInbox(env, config, settings).then(() => {});
+        })
+        .then(() => {}, logFailure('social.poll_failed')),
+    );
   },
 } satisfies ExportedHandler<Env>;

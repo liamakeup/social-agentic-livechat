@@ -31,6 +31,21 @@ export interface Env {
   QUERY_RETENTION_DAYS?: string;
   /** Workers Rate Limiting binding: per site + client IP burst limit on /api/chat. */
   CHAT_RATE_LIMITER?: RateLimit;
+
+  /** OpenAI-compatible fallback LLM base URL, e.g. "https://api.groq.com/openai/v1" (https only). */
+  FALLBACK_BASE_URL?: string;
+  /** Model name on the fallback provider, e.g. "llama-3.3-70b-versatile". */
+  FALLBACK_MODEL?: string;
+  /** Secret: API key of the fallback provider. */
+  FALLBACK_API_KEY?: string;
+  /** "cf-first" (default) | "external-first" | "cf-only" | "external-only". */
+  AI_PROVIDER_STRATEGY?: string;
+  /** Remote MCP server (Streamable HTTP) used by the social livechat agent. */
+  MCP_URL?: string;
+  /** Secret: bearer token for the MCP server. */
+  MCP_TOKEN?: string;
+  /** Secret: key material for encrypting secrets saved from the admin UI (defaults to ADMIN_TOKEN). */
+  SETTINGS_KEY?: string;
 }
 
 /** Hono generic environment. */
@@ -85,6 +100,7 @@ export interface ChatRequest {
 export interface Source {
   /** 1-based position in the sources list (relevance order). */
   index: number;
+  /** Page URL, or "kb:<docId>" for a knowledge doc entered in the admin UI (not a link). */
   url: string;
   title: string;
   /** Cosine similarity score returned by Vectorize. */

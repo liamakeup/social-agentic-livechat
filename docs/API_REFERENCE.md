@@ -8,7 +8,7 @@ All request and response bodies are JSON unless stated otherwise. Timestamps are
 
 | Route group                           | Requirement                                                                                                                                                                                                                                                     |
 |---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `/api/sites/*`                        | `Authorization: Bearer <ADMIN_TOKEN>` (the secret set with `wrangler secret put ADMIN_TOKEN`)                                                                                                                                                                   |
+| `/api/sites/*`, `/api/settings`, `/api/mcp/*`, `/api/social/*` | `Authorization: Bearer <ADMIN_TOKEN>` (the secret set with `wrangler secret put ADMIN_TOKEN`)                                                                                                                                                                   |
 | `/api/chat`                           | No token. The request `Origin` must match the site's registered domain or an entry in `ALLOWED_ORIGINS`. Requests without an `Origin` header are accepted. Rate-limited per site and client IP (`CHAT_RATE_LIMITER`) and per site per day (`DAILY_CHAT_LIMIT`). |
 | `/api/health`, `/widget.js`, `/admin` | None (the admin page asks for the token in the browser and sends it as a bearer header)                                                                                                                                                                         |
 
@@ -30,7 +30,8 @@ Errors always have this shape:
 | 429    | `ai_rate_limited`                                                                      | Workers AI quota or rate limit hit (`Retry-After: 60`)                                                   |
 | 429    | `rate_limited`                                                                         | Too many questions from this client for this site in the last minute (`Retry-After: 60`)                 |
 | 429    | `daily_limit_reached`                                                                  | The site answered `DAILY_CHAT_LIMIT` questions in the last 24 hours (`Retry-After: 60`)                  |
-| 502    | `ai_error`                                                                             | Workers AI failed (model unavailable, bad input); details only in Worker logs                            |
+| 409    | `message_not_sendable`, `social_off`, `mcp_not_configured`                             | Social livechat action not possible in the current state                                                 |
+| 502    | `ai_error`                                                                             | Workers AI (and the fallback LLM, if configured) failed; details only in Worker logs                     |
 | 503    | `admin_token_missing`                                                                  | `ADMIN_TOKEN` secret not configured                                                                      |
 | 503    | `admin_token_weak`                                                                     | `ADMIN_TOKEN` is the `.dev.vars.example` value or shorter than 16 characters (allowed on localhost only) |
 | 500    | `internal_error`                                                                       | Unexpected failure (details in Worker logs)                                                              |
@@ -41,12 +42,12 @@ Errors always have this shape:
 
 ## `GET /api/health`
 
-Liveness probe.
+Liveness probe. Public and cheap: it reads nothing from D1 and says nothing about the fallback LLM or the social integration (admins see those in `GET /api/settings`).
 
 ```json
 {
   "ok": true,
-  "service": "docflare-ai",
+  "service": "social-agentic-livechat",
   "models": { "embedding": "@cf/baai/bge-m3", "chat": "@cf/meta/llama-3.1-8b-instruct-fp8" },
   "time": "2026-10-07T09:00:00.000Z"
 }
@@ -186,7 +187,7 @@ Recent chat log for a site, newest first. Query parameter `limit` (1-100, defaul
 
 ## `DELETE /api/sites/:siteId`
 
-Removes the site row, its pages, its chat history and every vector in its namespace.
+Removes the site row, its pages, its knowledge docs, its chat history and their vectors.
 
 ```json
 { "siteId": "my-docs", "deleted": true, "vectorsDeleted": 611 }
@@ -285,6 +286,93 @@ for (;;) {
   }
 }
 ```
+
+---
+
+## Direct knowledge docs (admin)
+
+Price lists, FAQ and policies typed in the admin UI instead of crawled. Each doc is chunked and embedded into the site's namespace with vector ids `kb-<docId>-<n>`; its sources have `url: "kb:<docId>"`, which the widget shows as plain text (no link). Requires migration `0002_social_livechat.sql`.
+
+| Method & path | Body | Response |
+|---|---|---|
+| `GET /api/sites/:siteId/knowledge` | | `{ docs: [{ id, title, category, chunkCount, contentLength, createdAt, updatedAt }] }` |
+| `GET /api/sites/:siteId/knowledge/:docId` | | `{ doc: { …, content } }` |
+| `POST /api/sites/:siteId/knowledge` | `{ id?, title, content, category? }` | `201` (create) / `200` (update, `id` given) `{ doc, chunksIndexed }` |
+| `DELETE /api/sites/:siteId/knowledge/:docId` | | `{ deleted: true, vectorsDeleted }` |
+| `POST /api/sites/:siteId/knowledge/:docId/reindex` | | `{ doc, chunksIndexed }` |
+| `POST /api/sites/:siteId/test-chat` | `{ question, history? }` | Same as `POST /api/chat` JSON (`{ id, answer, sources }`); no origin check, no daily limit, not logged |
+
+`title` 1–200 characters, `content` 1–50 000 characters, `category` one of `pricing`, `faq`, `policy`, `general` (default). Errors: `400 invalid_knowledge` / `invalid_doc_id`, `404 knowledge_not_found`. An update re-chunks the doc and deletes vectors left over from a longer previous version. A create, update or reindex whose doc is deleted while it is being indexed removes the vectors it wrote and answers `404 knowledge_not_found`. Deleting a site also deletes its knowledge docs and their vectors.
+
+---
+
+## `GET /api/settings` / `POST /api/settings` (admin)
+
+Settings editable from the admin UI, stored in D1 (`app_settings`). Environment variables are the defaults; a saved value overrides them.
+
+```json
+{
+  "prompt": { "systemPrompt": "" },
+  "fallback": { "strategy": "cf-first", "baseUrl": "", "model": "", "apiKeySet": false, "apiKeyUndecryptable": false },
+  "mcp": { "url": "", "tokenSet": false, "tokenUndecryptable": false, "proxyTool": "", "socialSiteId": "", "socialMode": "off",
+           "pollIntervalMinutes": 2, "maxRepliesPerTick": 3, "accountId": "",
+           "toolListConversations": "messages_list_inbox_conversations",
+           "toolListMessages": "messages_get_inbox_conversation_messages",
+           "toolSendMessage": "messages_send_inbox_message", "socialEnabledAt": null }
+}
+```
+
+`POST` takes any subset of the same groups plus the write-only secrets `fallback.apiKey` and `mcp.token`, and returns the shape above. Secrets are AES-GCM encrypted at rest (key derived from `SETTINGS_KEY`, else `ADMIN_TOKEN`) and never returned. For a secret, an omitted field or `""` keeps the stored value, `null` clears it (also hiding an env-var value), any other string replaces it. If a stored secret no longer decrypts (`SETTINGS_KEY`, or without it `ADMIN_TOKEN`, was rotated) it is treated as unset and `apiKeyUndecryptable` / `tokenUndecryptable` is `true` until the secret is saved again; the admin page shows a warning. Changing the host (host and port) of `mcp.url`, including clearing the URL, without supplying `mcp.token` in the same request clears the stored MCP token, so a token is never sent to a server it was not entered for (host A → `""` → host B ends without a token); a new path on the same host keeps it.
+
+Validation (`400 invalid_settings`): `systemPrompt` ≤ 4000 characters (when set it replaces the "You are DocFlare…" line of the prompt; the grounding rules stay); `strategy` ∈ `cf-first | external-first | cf-only | external-only`; `baseUrl` / `mcp.url` https (http only for localhost) or `""` to clear; `socialMode` ∈ `off | draft | auto`; `pollIntervalMinutes` integer 1–60; `maxRepliesPerTick` integer 1–10; tool names `[A-Za-z0-9_.:/-]`; when `socialMode` is not `off`, `mcp.url` must be set and `socialSiteId` must be a registered site. Switching `socialMode` from `off` to `draft`/`auto` records `socialEnabledAt`: customer messages older than that are never answered.
+
+The fallback LLM is used only when `baseUrl`, `model` and the API key are all set; otherwise every strategy behaves as Workers AI only.
+
+---
+
+## `POST /api/mcp/test-connection` (admin)
+
+Runs the MCP handshake and `tools/list` with the saved settings. Always HTTP 200.
+
+```json
+{ "ok": true, "serverName": "zernio", "tools": ["search_tools", "call_tool"] }
+```
+or `{ "ok": false, "error": "MCP HTTP 401" }` (never contains the token).
+
+---
+
+## Social livechat (admin)
+
+The agent polls the inbox through the remote MCP server (from the cron trigger every `pollIntervalMinutes` while `socialMode` is not `off`, or on demand), answers new customer messages with the RAG pipeline of `socialSiteId`, and in `auto` mode sends the reply, in `draft` mode stores it for review. A customer asking for a person ("nhân viên", "người thật", "tư vấn viên", "human", "agent", "staff"), or a question with no relevant knowledge, hands the conversation off (`needs_human`, AI switched off for it) without replying. Each customer message is answered at most once; a send is never retried automatically. A conversation whose AI is off is not answered, but a new customer message in it is recorded as `needs_human` so it shows on the dashboard.
+
+Each poll first recovers rows left behind by an invocation that died: `claimed` for more than 5 minutes becomes `failed` (`"interrupted before send"`; nothing was sent), `sending` for more than 5 minutes becomes `unknown`. A conversation whose inbox `updatedTime` equals the one recorded when it was last processed is skipped without any MCP call; only conversations whose latest message is claimed for an AI answer count toward `maxRepliesPerTick`.
+
+Subrequest budget: the poll keeps to 40 of the Workers Free plan's 50 subrequests per invocation (the cron invocation also runs the crawler batch, which shares the same 50). It reserves 4 for the handshake and conversation list, and each AI-answered conversation costs up to 8 (messages fetch, embedding, vector query, rerank, generation, possible fallback, send), so at most 4 replies are sent per tick whatever `maxRepliesPerTick` says. The effective cap is returned as `replyCap` and logged (`social.poll`).
+
+| Method & path | Body | Response |
+|---|---|---|
+| `GET /api/social/conversations?status=open\|needs_human\|all&limit=50` | | `{ conversations: [{ id, accountId, conversationId, platform, participantName, aiEnabled, status, lastMessageAt, updatedAt, lastCustomerText, lastReplyText, lastReplyStatus }] }` |
+| `GET /api/social/conversations/:id/messages` | | `{ messages: [{ id, externalMessageId, customerText, replyText, status, error, createdAt, updatedAt }] }` (oldest first, max 100) |
+| `POST /api/social/conversations/:id/ai` | `{ enabled: boolean }` | Conversation object; enabling also sets `status: "open"` |
+| `POST /api/social/messages/:id/send` | `{ text?, confirmUnknown? }` (`text` ≤ 2000, `confirmUnknown` boolean) | Message object (`status` `sent`; `failed` or `unknown` with `error`) |
+| `POST /api/social/poll` | | `{ checked, replied, drafted, handedOff, needsHuman, skipped, replyCap, recovered, errors: [] }` |
+
+Message `status`:
+
+| Status | Meaning | Admin `send` |
+|---|---|---|
+| `claimed` | Being answered by a poll | no |
+| `draft` | Reply generated in `draft` mode, waiting for review | yes |
+| `superseded` | An outdated draft: a newer customer message exists in the same conversation (ordered by the platform message time, whatever order the polls finished in; shown greyed) | no |
+| `sending` | Send in progress | no |
+| `sent` | Delivered | no |
+| `failed` | Definitely not delivered: the platform rejected it (HTTP 4xx, JSON-RPC error, tool error), it was never sent, or the poll was interrupted before sending | yes |
+| `unknown` | The send may have reached the customer (timeout, network error, HTTP 5xx, interrupted while sending). `error` starts with "send outcome unknown; check the platform before resending" | only with `confirmUnknown: true` |
+| `needs_human` | Handed off, or a new message in a conversation whose AI is off | yes (needs `text`) |
+
+`send` claims the message atomically: a second (or concurrent) call, a message in a non-sendable status, or a `draft` whose conversation has a newer customer message answers `409 message_not_sendable`; an `unknown` message without `confirmUnknown: true` answers `409 confirm_required`; a message without reply text needs `text` (`400 text_required`). If recording the outcome in D1 fails after a successful send, the message stays `sending` and the next poll after 5 minutes marks it `unknown`.
+
+`poll` answers `409 social_off` while `socialMode` is `off`, and `409 mcp_not_configured` / `site_not_found` when the MCP URL or social site is missing. It runs under `waitUntil`, so closing the admin tab does not cancel it midway; the response still carries the summary. `checked` counts candidate conversations looked at (including those skipped without an MCP call); `needsHuman` counts messages recorded in AI-off conversations; `recovered` counts stale rows fixed at the start.
 
 ---
 

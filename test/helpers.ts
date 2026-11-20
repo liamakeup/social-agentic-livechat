@@ -47,7 +47,10 @@ export function createTestDb(): { d1: D1Database; sqlite: Database } {
   }
   const d1 = {
     prepare: (sql: string) => new TestStatement(sqlite, sql),
-    batch: async (statements: TestStatement[]) => sqlite.transaction(() => statements.map((s) => s.runSync()))(),
+    batch: async (statements: TestStatement[]) =>
+      sqlite.transaction(() =>
+        statements.map((s) => ({ results: [], success: true, meta: { changes: s.runSync() } })),
+      )(),
   };
   return { d1: d1 as unknown as D1Database, sqlite };
 }

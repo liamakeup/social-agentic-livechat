@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,6 +16,7 @@
       color-scheme: dark;
     }
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body { margin: 0; font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: var(--fg); background: var(--bg); }
     a { color: var(--a); text-decoration: none; }
     code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
@@ -25,25 +26,33 @@
     header .sp { flex: 1; }
     .pill { font-size: 11px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--bd); color: var(--mu); }
     main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 80px; display: grid; gap: 22px; }
+    main > *, .panel > *, .grid > *, .lc-layout > * { min-width: 0; }
     h1 { font-size: 22px; margin: 0; }
     h2 { font-size: 15px; margin: 0 0 12px; }
+    h3 { font-size: 14px; margin: 0; }
     .sub { color: var(--mu); margin: 4px 0 0; }
     .card { background: var(--card); border: 1px solid var(--bd); border-radius: 14px; padding: 18px 20px; box-shadow: var(--sh); }
     .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .stack { display: grid; gap: 12px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
     @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
     label { display: block; font-size: 12px; color: var(--mu); margin-bottom: 4px; }
-    input { width: 100%; padding: 9px 12px; border: 1px solid var(--bd); border-radius: 9px; background: var(--bg); color: var(--fg); font: inherit; }
-    input:focus { outline: none; border-color: var(--a); }
+    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--bd); border-radius: 9px; background: var(--bg); color: var(--fg); font: inherit; }
+    textarea { resize: vertical; min-height: 90px; line-height: 1.45; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a); }
+    input[type="checkbox"] { width: auto; padding: 0; accent-color: var(--a); }
     .field { flex: 1; min-width: 180px; }
+    .hint { font-size: 12px; color: var(--mu); margin: 4px 0 0; }
     button { font: inherit; font-size: 13px; padding: 8px 14px; border-radius: 9px; border: 1px solid var(--bd); background: var(--card); color: var(--fg); cursor: pointer; }
     button:hover { border-color: var(--a); }
     button.pri { background: var(--a); border-color: var(--a); color: #fff; font-weight: 600; }
     button.dng { color: var(--err); }
     button:disabled { opacity: .5; cursor: default; }
+    button:focus-visible, a:focus-visible, input[type="checkbox"]:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
     .sites { display: grid; gap: 14px; }
     .site { display: grid; gap: 12px; }
     .site .top { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+    .site .top a { overflow-wrap: anywhere; }
     .site .id { font-weight: 700; font-size: 16px; }
     .site .dom { color: var(--mu); }
     .bar { height: 8px; border-radius: 999px; background: var(--bd); overflow: hidden; display: flex; }
@@ -56,16 +65,80 @@
     details { border-top: 1px solid var(--bd); padding-top: 10px; }
     summary { cursor: pointer; color: var(--mu); font-size: 13px; }
     pre.snip { background: var(--code); border: 1px solid var(--bd); border-radius: 9px; padding: 10px 12px; overflow-x: auto; margin: 8px 0 0; white-space: pre-wrap; word-break: break-all; }
+    .tbl { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
     th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--bd); vertical-align: top; }
     th { color: var(--mu); font-weight: 500; font-size: 12px; }
     td.q { width: 34%; font-weight: 500; }
     td.r { color: var(--mu); }
     td.t { white-space: nowrap; color: var(--mu); font-size: 12px; }
+    td.n { white-space: nowrap; }
+    td.acts { white-space: nowrap; }
+    td.acts button { padding: 5px 9px; font-size: 12px; }
     .log { max-height: 220px; overflow: auto; background: var(--code); border: 1px solid var(--bd); border-radius: 9px; padding: 10px 12px; margin: 0; white-space: pre-wrap; }
     .log .e { color: var(--err); } .log .s { color: var(--ok); }
     .empty { color: var(--mu); text-align: center; padding: 24px; }
     .toggle { font-size: 12px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--bd); scrollbar-width: thin; }
+    .tabs button[role="tab"] { flex: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--mu); padding: 10px 14px; font-weight: 500; white-space: nowrap; }
+    .tabs button[role="tab"]:hover { color: var(--fg); }
+    .tabs button[role="tab"][aria-selected="true"] { color: var(--a); border-bottom-color: var(--a); }
+    .panel { display: grid; gap: 22px; }
+
+    /* Notes, badges */
+    .note { font-size: 13px; padding: 8px 12px; border-radius: 9px; border: 1px solid var(--bd); background: var(--code); white-space: pre-wrap; overflow-wrap: anywhere; }
+    .note.err { color: var(--err); border-color: var(--err); }
+    .note.ok { color: var(--ok); border-color: var(--ok); }
+    .warnbox { font-size: 13px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--warn); color: var(--warn); background: var(--code); }
+    .warnbox.strong { border-color: var(--err); color: var(--err); font-weight: 600; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+    .b-ok { color: var(--ok); } .b-warn { color: var(--warn); } .b-err { color: var(--err); } .b-mu { color: var(--mu); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chips span { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--code); border: 1px solid var(--bd); overflow-wrap: anywhere; }
+    .seg { display: inline-flex; border: 1px solid var(--bd); border-radius: 9px; overflow: hidden; flex-wrap: wrap; }
+    .seg button { border: 0; border-radius: 0; padding: 7px 12px; }
+    .seg button[aria-pressed="true"] { background: var(--a); color: #fff; }
+    .cnt { font-size: 12px; color: var(--mu); }
+    .cnt.over { color: var(--err); }
+    .kv { font-size: 13px; color: var(--mu); }
+    .kv b { color: var(--fg); font-weight: 500; }
+
+    /* Livechat */
+    .lc-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 22px; align-items: start; }
+    @media (max-width: 860px) { .lc-layout { grid-template-columns: 1fr; } }
+    .convs { display: grid; gap: 10px; }
+    .conv { border: 1px solid var(--bd); border-radius: 11px; padding: 11px 13px; display: grid; gap: 6px; overflow-wrap: anywhere; }
+    .conv.active { border-color: var(--a); }
+    .conv-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .conv-top .sp { flex: 1; }
+    .conv-line { font-size: 13px; }
+    .conv-line .lbl { color: var(--mu); font-size: 12px; margin-right: 4px; }
+    .t { color: var(--mu); font-size: 12px; }
+    .switch { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: var(--fg); cursor: pointer; }
+    .msgs { display: grid; gap: 14px; max-height: 70vh; overflow-y: auto; padding-right: 2px; }
+    .m { display: grid; gap: 6px; border-bottom: 1px dashed var(--bd); padding-bottom: 12px; }
+    .bubble { max-width: 88%; padding: 8px 11px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; }
+    .bubble.in { background: var(--code); border: 1px solid var(--bd); justify-self: start; border-bottom-left-radius: 4px; }
+    .bubble.out { background: transparent; border: 1px solid var(--a); justify-self: end; border-bottom-right-radius: 4px; }
+    .bubble .meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; font-size: 11.5px; color: var(--mu); white-space: normal; }
+    .bubble .errt { color: var(--err); font-size: 12px; margin-top: 4px; }
+    .m.superseded { opacity: .5; }
+    .m .warnt { color: var(--warn); font-size: 12px; margin: 4px 0; }
+    .edit { display: grid; gap: 6px; }
+    .answer { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--code); border: 1px solid var(--bd); border-radius: 9px; padding: 10px 12px; }
+    ol.srcs { margin: 8px 0 0; padding-left: 20px; font-size: 13px; }
+    ol.srcs li { overflow-wrap: anywhere; }
+
+    @media (max-width: 600px) {
+      header { padding: 12px 16px; gap: 10px; }
+      #origin { display: none; }
+      main { padding: 18px 16px 60px; }
+      .card { padding: 14px; }
+      .field { min-width: 0; flex-basis: 100%; }
+      .bubble { max-width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -73,73 +146,304 @@
     <div class="logo">Social <span>Agentic</span> AI Livechat <span class="pill">admin</span></div>
     <div class="sp"></div>
     <span class="pill mono" id="origin"></span>
-    <button class="toggle" id="theme" title="Toggle theme">◐</button>
+    <button class="toggle" id="theme" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện sáng/tối">◐</button>
     <a href="https://github.com/liamakeup/social-agentic-livechat" target="_blank" rel="noopener" class="pill">GitHub</a>
   </header>
 
   <main>
-    <div>
-      <h1>Sites</h1>
-      <p class="sub">Register documentation sites, drive indexing, inspect what users ask. Everything here calls the <code>/api/sites/*</code> endpoints with your admin token.</p>
+    <section class="card">
+      <h2>Admin token</h2>
+      <div class="row">
+        <div class="field"><label for="token">ADMIN_TOKEN (chỉ lưu trong tab này)</label><input id="token" type="password" autocomplete="off" placeholder="secret đã đặt bằng wrangler secret put ADMIN_TOKEN"></div>
+        <button class="pri" id="connect">Kết nối</button>
+      </div>
+      <div class="note" id="connNote" role="status" hidden></div>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="Khu vực quản trị" id="tabs">
+      <button role="tab" id="tab-livechat" aria-controls="panel-livechat" aria-selected="false" tabindex="-1" data-tab="livechat">Livechat &amp; Inbox</button>
+      <button role="tab" id="tab-knowledge" aria-controls="panel-knowledge" aria-selected="false" tabindex="-1" data-tab="knowledge">Kho Tri Thức / Bảng Giá</button>
+      <button role="tab" id="tab-ai" aria-controls="panel-ai" aria-selected="false" tabindex="-1" data-tab="ai">Cấu Hình AI &amp; Fallback</button>
+      <button role="tab" id="tab-mcp" aria-controls="panel-mcp" aria-selected="false" tabindex="-1" data-tab="mcp">Kết Nối MCP</button>
+      <button role="tab" id="tab-sites" aria-controls="panel-sites" aria-selected="false" tabindex="-1" data-tab="sites">Sites Sitemap</button>
     </div>
 
-    <div class="grid">
-      <section class="card">
-        <h2>Admin token</h2>
-        <div class="row">
-          <div class="field"><label for="token">ADMIN_TOKEN (stored in this tab only)</label><input id="token" type="password" placeholder="paste the secret set with wrangler secret put ADMIN_TOKEN"></div>
-          <button class="pri" id="connect">Connect</button>
+    <!-- ============ Livechat ============ -->
+    <div class="panel" role="tabpanel" id="panel-livechat" aria-labelledby="tab-livechat" tabindex="0" hidden>
+      <section class="card stack">
+        <div class="row" style="justify-content:space-between">
+          <div class="seg" role="group" aria-label="Lọc theo trạng thái" id="lcFilter">
+            <button type="button" data-f="all" aria-pressed="true">Tất cả</button>
+            <button type="button" data-f="open" aria-pressed="false">Đang mở</button>
+            <button type="button" data-f="needs_human" aria-pressed="false">Cần người hỗ trợ</button>
+          </div>
+          <div class="row">
+            <span class="t" id="lcUpdated"></span>
+            <button type="button" id="lcRefresh">Làm mới</button>
+            <button type="button" class="pri" id="lcPoll">Quét ngay</button>
+          </div>
         </div>
+        <p class="hint">Tự làm mới mỗi 30 giây khi tab này đang mở. "Quét ngay" kiểm tra hộp thư MCP và xử lý tin mới theo chế độ đã cấu hình.</p>
+        <div class="note" id="lcPollNote" role="status" hidden></div>
+        <div class="note err" id="lcErr" role="alert" hidden></div>
       </section>
 
+      <div class="lc-layout">
+        <section class="card">
+          <h2>Hội thoại</h2>
+          <div class="convs" id="lcList"><div class="empty">Kết nối bằng admin token để xem hội thoại.</div></div>
+        </section>
+        <section class="card stack" id="lcDetail" aria-live="polite">
+          <div class="empty" id="lcDetailEmpty">Chọn "Xem hội thoại" để mở nhật ký tin nhắn.</div>
+          <div id="lcDetailBody" class="stack" hidden>
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <h3 id="lcDetailTitle"></h3>
+                <div class="t" id="lcDetailSub"></div>
+              </div>
+              <div class="row">
+                <button type="button" id="lcDetailReload">Tải lại</button>
+                <button type="button" id="lcDetailClose" aria-label="Đóng hội thoại">Đóng</button>
+              </div>
+            </div>
+            <div class="note" id="lcMsgNote" role="status" hidden></div>
+            <div class="msgs" id="lcMsgs"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ============ Knowledge ============ -->
+    <div class="panel" role="tabpanel" id="panel-knowledge" aria-labelledby="tab-knowledge" tabindex="0" hidden>
+      <section class="card stack">
+        <div class="row">
+          <div class="field"><label for="kbSite">Site</label><select id="kbSite"><option value="">— chưa có site —</option></select></div>
+          <button type="button" id="kbReload" style="align-self:flex-end">Tải lại</button>
+        </div>
+        <div class="note err" id="kbErr" role="alert" hidden></div>
+        <div class="tbl" id="kbDocs"><div class="empty">Chọn một site để xem tài liệu.</div></div>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <form id="kbForm" class="stack" novalidate>
+            <div class="row" style="justify-content:space-between">
+              <h2 style="margin:0" id="kbFormTitle">Thêm tài liệu mới</h2>
+              <button type="button" id="kbNew">Tạo mới</button>
+            </div>
+            <input type="hidden" id="kbId">
+            <div class="row">
+              <div class="field" style="flex:2"><label for="kbTitle">Tiêu đề (tối đa 200 ký tự)</label><input id="kbTitle" maxlength="200" required placeholder="Bảng giá dịch vụ trang điểm 2026"></div>
+              <div class="field"><label for="kbCat">Loại</label>
+                <select id="kbCat">
+                  <option value="pricing">Bảng giá (pricing)</option>
+                  <option value="faq">Câu hỏi thường gặp (faq)</option>
+                  <option value="policy">Chính sách (policy)</option>
+                  <option value="general" selected>Chung (general)</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label for="kbContent">Nội dung</label>
+              <textarea id="kbContent" maxlength="50000" rows="12" required placeholder="Dán bảng giá, combo, FAQ, chính sách…"></textarea>
+              <div class="row" style="justify-content:space-between"><span class="cnt" id="kbCount">0 / 50.000 ký tự</span></div>
+            </div>
+            <div class="row"><button class="pri" type="submit" id="kbSave">Lưu &amp; index</button></div>
+            <div class="note" id="kbNote" role="status" hidden></div>
+          </form>
+        </section>
+
+        <section class="card stack">
+          <h2 style="margin:0">Thử hỏi</h2>
+          <p class="hint" style="margin:0">Hỏi thử chatbot của site đang chọn (không tính giới hạn, không ghi nhật ký).</p>
+          <div><label for="kbQ">Câu hỏi</label><textarea id="kbQ" rows="3" maxlength="2000" placeholder="Gói trang điểm cô dâu giá bao nhiêu?"></textarea></div>
+          <div class="row"><button class="pri" type="button" id="kbAsk">Hỏi</button></div>
+          <div class="note err" id="kbAskErr" role="alert" hidden></div>
+          <div id="kbAnswerWrap" hidden>
+            <div class="answer" id="kbAnswer"></div>
+            <ol class="srcs" id="kbSources"></ol>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ============ AI & Fallback ============ -->
+    <div class="panel" role="tabpanel" id="panel-ai" aria-labelledby="tab-ai" tabindex="0" hidden>
       <section class="card">
-        <h2>Register / re-index a site</h2>
-        <form id="reg" class="row">
-          <div class="field"><label for="siteId">siteId</label><input id="siteId" placeholder="my-docs" required pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}"></div>
-          <div class="field" style="flex:2"><label for="sitemap">sitemapUrl</label><input id="sitemap" type="url" placeholder="https://docs.example.com/sitemap.xml" required></div>
-          <div class="field"><label for="domain">domain (optional, kept on re-index)</label><input id="domain" placeholder="docs.example.com or *.example.com"></div>
-          <button class="pri" type="submit">Queue pages</button>
+        <form id="aiForm" class="stack" novalidate>
+          <div class="row" style="justify-content:space-between">
+            <h2 style="margin:0">Kịch bản tư vấn (System Prompt)</h2>
+            <button type="button" data-reload-settings>Tải lại</button>
+          </div>
+          <div>
+            <label for="aiPrompt">Thay cho câu giới thiệu mặc định "You are DocFlare…" (quy tắc bám tài liệu vẫn giữ nguyên). Để trống = mặc định.</label>
+            <textarea id="aiPrompt" rows="6" maxlength="4000" placeholder="Bạn là chuyên viên tư vấn của tiệm trang điểm…"></textarea>
+            <span class="cnt" id="aiPromptCount">0 / 4.000 ký tự</span>
+          </div>
+
+          <h2 style="margin:8px 0 0">Mô hình & Fallback</h2>
+          <div class="row">
+            <div class="field"><label for="aiStrategy">Chiến lược</label>
+              <select id="aiStrategy">
+                <option value="cf-first">cf-first — Workers AI trước, lỗi thì dùng fallback</option>
+                <option value="external-first">external-first — Fallback trước, lỗi thì Workers AI</option>
+                <option value="cf-only">cf-only — chỉ Workers AI</option>
+                <option value="external-only">external-only — chỉ fallback</option>
+              </select>
+            </div>
+          </div>
+          <p class="hint" style="margin:0">Fallback chỉ hoạt động khi có đủ Base URL + Model + API key; nếu thiếu, mọi chiến lược đều chạy như cf-only.</p>
+          <div class="row">
+            <div class="field" style="flex:2"><label for="aiBase">Base URL (OpenAI-compatible, https)</label><input id="aiBase" type="url" placeholder="https://api.openai.com/v1" autocomplete="off"></div>
+            <div class="field"><label for="aiModel">Model</label><input id="aiModel" placeholder="gpt-4o-mini" autocomplete="off"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="aiKey">API key <span id="aiKeyState"></span></label><input id="aiKey" type="password" autocomplete="new-password" placeholder="chưa có key"></div>
+            <button type="button" class="dng" id="aiKeyClear" style="align-self:flex-end">Xoá key</button>
+          </div>
+          <p class="hint" style="margin:0">Để trống ô API key = giữ nguyên key đã lưu. Key được mã hoá trong D1 và không bao giờ hiển thị lại.</p>
+          <div class="row"><button class="pri" type="submit">Lưu cấu hình AI</button></div>
+          <div class="note" id="aiNote" role="status" hidden></div>
         </form>
       </section>
     </div>
 
-    <section class="card">
-      <div class="row" style="justify-content:space-between">
-        <h2 style="margin:0">Indexed sites</h2>
-        <button id="refresh">Refresh</button>
-      </div>
-      <div class="sites" id="sites"><div class="empty">Connect with your admin token to load sites.</div></div>
-    </section>
+    <!-- ============ MCP ============ -->
+    <div class="panel" role="tabpanel" id="panel-mcp" aria-labelledby="tab-mcp" tabindex="0" hidden>
+      <section class="card">
+        <form id="mcpForm" class="stack" novalidate>
+          <div class="row" style="justify-content:space-between">
+            <h2 style="margin:0">Remote MCP server</h2>
+            <button type="button" data-reload-settings>Tải lại</button>
+          </div>
+          <div class="row">
+            <div class="field" style="flex:2"><label for="mcpUrl">URL (https)</label><input id="mcpUrl" type="url" placeholder="https://mcp.example.com/mcp" autocomplete="off"></div>
+            <div class="field"><label for="mcpProxy">proxyTool</label><input id="mcpProxy" placeholder="call_tool" autocomplete="off"><p class="hint">"call_tool" cho Zernio; để trống nếu server lộ tool trực tiếp.</p></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="mcpToken">Token <span id="mcpTokenState"></span></label><input id="mcpToken" type="password" autocomplete="new-password" placeholder="chưa có token"></div>
+            <button type="button" class="dng" id="mcpTokenClear" style="align-self:flex-end">Xoá token</button>
+          </div>
+          <p class="hint" style="margin:0">Để trống ô token = giữ nguyên token đã lưu. Đổi URL sang máy chủ (host) khác hoặc xoá URL mà không nhập token mới thì token đã lưu sẽ bị xoá, để token không bị gửi tới máy chủ lạ.</p>
 
-    <section class="card">
-      <h2>Activity</h2>
-      <pre class="log" id="log">ready</pre>
-    </section>
+          <h2 style="margin:8px 0 0">Social livechat agent</h2>
+          <div class="row">
+            <div class="field"><label for="mcpSite">Site tri thức dùng để trả lời</label><select id="mcpSite"><option value="">— chọn site —</option></select></div>
+            <div class="field"><label for="mcpMode">Chế độ</label>
+              <select id="mcpMode">
+                <option value="off">off — tắt</option>
+                <option value="draft">draft — chỉ soạn nháp, người duyệt gửi</option>
+                <option value="auto">auto — tự gửi trả lời cho khách</option>
+              </select>
+            </div>
+          </div>
+          <div class="warnbox" id="mcpModeWarn">Chế độ draft: AI chỉ soạn nháp, bạn xem lại và bấm "Gửi" trong tab Livechat.</div>
+          <div class="row">
+            <div class="field"><label for="mcpInterval">Chu kỳ quét (phút)</label><input id="mcpInterval" type="number" min="1" max="60" step="1"></div>
+            <div class="field"><label for="mcpMax">Tối đa trả lời mỗi lượt (1–10)</label><input id="mcpMax" type="number" min="1" max="10" step="1"></div>
+            <div class="field"><label for="mcpAccount">accountId</label><input id="mcpAccount" autocomplete="off" placeholder="ID tài khoản social (tuỳ chọn)"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="mcpToolList">Tool liệt kê hội thoại</label><input id="mcpToolList" class="mono" autocomplete="off"></div>
+            <div class="field"><label for="mcpToolMsgs">Tool lấy tin nhắn</label><input id="mcpToolMsgs" class="mono" autocomplete="off"></div>
+            <div class="field"><label for="mcpToolSend">Tool gửi tin</label><input id="mcpToolSend" class="mono" autocomplete="off"></div>
+          </div>
+          <div class="kv">Bật social lúc: <b id="mcpEnabledAt">—</b> <span class="hint">(tin nhắn trước thời điểm này không bao giờ được trả lời)</span></div>
+          <div class="row">
+            <button class="pri" type="submit">Lưu cấu hình MCP</button>
+            <button type="button" id="mcpTest">Kiểm tra kết nối</button>
+          </div>
+          <p class="hint" style="margin:0">"Kiểm tra kết nối" dùng cấu hình đã lưu — hãy lưu trước khi kiểm tra.</p>
+          <div class="note" id="mcpNote" role="status" hidden></div>
+          <div id="mcpTestOut" hidden>
+            <div class="note" id="mcpTestNote" role="status"></div>
+            <div class="chips" id="mcpTools"></div>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- ============ Sites (existing) ============ -->
+    <div class="panel" role="tabpanel" id="panel-sites" aria-labelledby="tab-sites" tabindex="0" hidden>
+      <div>
+        <h1>Sites</h1>
+        <p class="sub">Đăng ký site tài liệu, chạy index, xem người dùng hỏi gì. Mọi thao tác gọi <code>/api/sites/*</code> bằng admin token.</p>
+      </div>
+
+      <section class="card">
+        <h2>Đăng ký / index lại site</h2>
+        <form id="reg" class="row">
+          <div class="field"><label for="siteId">siteId</label><input id="siteId" placeholder="my-docs" required pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}"></div>
+          <div class="field" style="flex:2"><label for="sitemap">sitemapUrl</label><input id="sitemap" type="url" placeholder="https://docs.example.com/sitemap.xml" required></div>
+          <div class="field"><label for="domain">domain (tuỳ chọn, giữ nguyên khi index lại)</label><input id="domain" placeholder="docs.example.com hoặc *.example.com"></div>
+          <button class="pri" type="submit">Đưa trang vào hàng đợi</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="row" style="justify-content:space-between">
+          <h2 style="margin:0">Site đã index</h2>
+          <button id="refresh">Làm mới</button>
+        </div>
+        <div class="sites" id="sites"><div class="empty">Kết nối bằng admin token để tải danh sách site.</div></div>
+      </section>
+
+      <section class="card">
+        <h2>Hoạt động</h2>
+        <pre class="log" id="log">ready</pre>
+      </section>
+    </div>
   </main>
 
   <script>
     (function () {
       var base = location.origin;
       var $ = function (s, r) { return (r || document).querySelector(s); };
+      var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
       var tokenEl = $('#token'), sitesEl = $('#sites'), logEl = $('#log');
       var token = sessionStorage.getItem('docflare_admin_token') || '';
       var running = {};
+      var sitesCache = [];
+      var settings = null;
       $('#origin').textContent = base;
       tokenEl.value = token;
 
+      function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+      function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
+
       // Theme: ?theme=dark|light, then saved preference, then system.
       var qs = new URLSearchParams(location.search);
-      var theme = qs.get('theme') || localStorage.getItem('docflare_admin_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      function setTheme(t) { theme = t; document.documentElement.setAttribute('data-theme', t); localStorage.setItem('docflare_admin_theme', t); }
+      var theme = qs.get('theme') || lsGet('docflare_admin_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      function setTheme(t) { theme = t; document.documentElement.setAttribute('data-theme', t); lsSet('docflare_admin_theme', t); }
       setTheme(theme);
       $('#theme').onclick = function () { setTheme(theme === 'dark' ? 'light' : 'dark'); };
 
-      function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+      // All server-provided text goes through esc() before it is put into innerHTML.
+      function esc(x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
       function log(msg, cls) {
         var line = document.createElement('div');
         if (cls) line.className = cls;
-        line.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+        line.textContent = new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Saigon' }) + '  ' + msg;
         logEl.appendChild(line); logEl.scrollTop = logEl.scrollHeight;
+      }
+      /** Show a message (plain text, never HTML) in an inline note; empty text hides it. */
+      function note(el, text, kind) {
+        el.textContent = text || '';
+        el.className = 'note' + (kind ? ' ' + kind : '');
+        el.hidden = !text;
+      }
+      function errText(e) { return (e && e.message ? e.message : String(e)) + (e && e.code ? ' [' + e.code + ']' : ''); }
+      function cut(s, n) { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) + '…' : s; }
+      function fmtNum(n) { return Number(n || 0).toLocaleString('vi-VN'); }
+      /** D1 CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" in UTC; ISO strings parse as-is. Shown in Asia/Saigon. */
+      function fmtTime(x) {
+        if (!x) return '';
+        var s = String(x);
+        if (/^\d{4}-\d\d-\d\d \d\d:\d\d(:\d\d)?$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+        var d = new Date(s);
+        if (isNaN(d.getTime())) return String(x);
+        try { return d.toLocaleString('vi-VN', { timeZone: 'Asia/Saigon', hour12: false, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+        catch (e) { return d.toLocaleString(); }
       }
 
       function api(method, path, body) {
@@ -150,8 +454,8 @@
         }).then(function (r) {
           return r.json().catch(function () { return {}; }).then(function (j) {
             if (!r.ok) {
-              var err = new Error(j.error || (method + ' ' + path + ' failed (' + r.status + ')'));
-              err.status = r.status; err.data = j;
+              var err = new Error(j.error || (method + ' ' + path + ' thất bại (' + r.status + ')'));
+              err.status = r.status; err.code = j.code; err.data = j;
               throw err;
             }
             return j;
@@ -159,33 +463,71 @@
         });
       }
 
+      /* ================= Tabs ================= */
+      var TABS = ['livechat', 'knowledge', 'ai', 'mcp', 'sites'];
+      var tabBtns = $$('#tabs [role="tab"]');
+      var activeTab = lsGet('docflare_admin_tab');
+      if (TABS.indexOf(activeTab) < 0) activeTab = 'livechat';
+
+      function activate(name, focus, noRefresh) {
+        activeTab = name;
+        tabBtns.forEach(function (b) {
+          var on = b.getAttribute('data-tab') === name;
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+          b.tabIndex = on ? 0 : -1;
+          if (on && focus) b.focus();
+        });
+        TABS.forEach(function (t) { $('#panel-' + t).hidden = t !== name; });
+        lsSet('docflare_admin_tab', name);
+        if (!noRefresh) refreshTab();
+      }
+      function refreshTab() {
+        if (!token) return;
+        if (activeTab === 'livechat') loadConversations();
+        else if (activeTab === 'knowledge') { if (kb.siteId) loadDocs(); }
+        else if (activeTab === 'ai' || activeTab === 'mcp') { if (!settings) loadSettings(); }
+        else if (activeTab === 'sites') loadSites();
+      }
+      tabBtns.forEach(function (b) { b.addEventListener('click', function () { activate(b.getAttribute('data-tab')); }); });
+      $('#tabs').addEventListener('keydown', function (e) {
+        var i = TABS.indexOf(activeTab), n = null;
+        if (e.key === 'ArrowRight') n = (i + 1) % TABS.length;
+        else if (e.key === 'ArrowLeft') n = (i - 1 + TABS.length) % TABS.length;
+        else if (e.key === 'Home') n = 0;
+        else if (e.key === 'End') n = TABS.length - 1;
+        if (n === null) return;
+        e.preventDefault();
+        activate(TABS[n], true);
+      });
+
+      /* ================= Sites (existing) ================= */
       function pct(n, total) { return total ? (100 * n / total) + '%' : '0%'; }
 
       function renderSites(list) {
-        if (!list.length) { sitesEl.innerHTML = '<div class="empty">No sites yet. Register one above.</div>'; return; }
+        if (!list.length) { sitesEl.innerHTML = '<div class="empty">Chưa có site. Đăng ký ở trên.</div>'; return; }
         sitesEl.innerHTML = list.map(function (s) {
           var p = s.progress, pend = p.pending + (p.processing || 0), snippet = '<script src="' + base + '/widget.js" data-site-id="' + s.id + '" data-theme="auto" defer><\/script>';
           return '<div class="site" data-id="' + esc(s.id) + '">' +
             '<div class="top"><span class="id">' + esc(s.id) + '</span><span class="dom">' + esc(s.domain) + '</span>' +
               '<a class="mono" href="' + esc(s.sitemap_url) + '" target="_blank" rel="noopener">' + esc(s.sitemap_url) + '</a></div>' +
             '<div class="bar"><i class="ok" style="width:' + pct(p.indexed, p.total) + '"></i><i class="er" style="width:' + pct(p.failed, p.total) + '"></i><i class="pe" style="width:' + pct(pend, p.total) + '"></i></div>' +
-            '<div class="stats"><span class="ok"><span class="dot"></span><b>' + p.indexed + '</b> indexed</span><span class="pe"><span class="dot"></span><b>' + pend + '</b> pending</span><span class="er"><span class="dot"></span><b>' + p.failed + '</b> failed</span><span><b>' + p.total + '</b> pages</span></div>' +
+            '<div class="stats"><span class="ok"><span class="dot"></span><b>' + esc(p.indexed) + '</b> đã index</span><span class="pe"><span class="dot"></span><b>' + esc(pend) + '</b> chờ</span><span class="er"><span class="dot"></span><b>' + esc(p.failed) + '</b> lỗi</span><span><b>' + esc(p.total) + '</b> trang</span></div>' +
             '<div class="row">' +
-              '<button class="pri" data-act="all"' + (pend && !running[s.id] ? '' : ' disabled') + '>' + (running[s.id] ? 'Indexing…' : 'Index all pending') + '</button>' +
-              '<button data-act="batch"' + (pend ? '' : ' disabled') + '>Process one batch</button>' +
-              '<button data-act="recrawl">Re-crawl sitemap</button>' +
-              '<button data-act="queries">Recent questions</button>' +
-              '<button class="dng" data-act="delete">Delete</button>' +
+              '<button class="pri" data-act="all"' + (pend && !running[s.id] ? '' : ' disabled') + '>' + (running[s.id] ? 'Đang index…' : 'Index tất cả trang chờ') + '</button>' +
+              '<button data-act="batch"' + (pend ? '' : ' disabled') + '>Xử lý một lô</button>' +
+              '<button data-act="recrawl">Quét lại sitemap</button>' +
+              '<button data-act="queries">Câu hỏi gần đây</button>' +
+              '<button class="dng" data-act="delete">Xoá</button>' +
             '</div>' +
-            '<details><summary>Embed snippet</summary><pre class="snip">' + esc(snippet) + '</pre></details>' +
+            '<details><summary>Mã nhúng widget</summary><pre class="snip">' + esc(snippet) + '</pre></details>' +
             '<div class="queries"></div>' +
           '</div>';
         }).join('');
       }
 
       function loadSites() {
-        return api('GET', '/api/sites').then(function (j) { renderSites(j.sites); return j.sites; })
-          .catch(function (e) { log(e.message, 'e'); });
+        return api('GET', '/api/sites').then(function (j) { sitesCache = j.sites || []; renderSites(sitesCache); populateSiteSelects(); return sitesCache; })
+          .catch(function (e) { log(errText(e), 'e'); note($('#connNote'), errText(e), 'err'); });
       }
 
       function logResults(results) {
@@ -194,78 +536,544 @@
 
       // A rate-limited batch answers 429 with the pages it did finish; log those before rethrowing.
       function processBatch(id) {
-        return api('POST', '/api/sites/' + id + '/process').then(function (j) { logResults(j.results); return j; },
+        return api('POST', '/api/sites/' + encodeURIComponent(id) + '/process').then(function (j) { logResults(j.results); return j; },
           function (e) { if (e.data) logResults(e.data.results); throw e; });
       }
 
       function indexAll(id) {
         if (running[id]) return;
         running[id] = true;
-        log('indexing ' + id + ' until the queue is empty…');
+        log('đang index ' + id + ' cho tới khi hết hàng đợi…');
         var waiting = false;
         (function loop() {
           processBatch(id).then(function (j) {
             loadSites();
             var left = j.progress.pending + (j.progress.processing || 0);
-            if (!left) { running[id] = false; log('done: ' + j.progress.indexed + ' indexed, ' + j.progress.failed + ' failed', 's'); return loadSites(); }
+            if (!left) { running[id] = false; log('xong: ' + j.progress.indexed + ' đã index, ' + j.progress.failed + ' lỗi', 's'); return loadSites(); }
             // Nothing claimable: the remaining pages are being indexed by the cron trigger (or by an invocation that died, until its lease expires).
             if (!j.processed) {
-              if (!waiting) log('waiting for ' + left + ' page(s) being indexed elsewhere…');
+              if (!waiting) log('chờ ' + left + ' trang đang được index ở nơi khác…');
               waiting = true;
               return setTimeout(loop, 5000);
             }
             waiting = false;
             loop();
           }).catch(function (e) {
-            if (e.status === 429) { log('Workers AI rate limited, pausing 60s', 'e'); loadSites(); return setTimeout(loop, 60000); }
-            running[id] = false; log(e.message, 'e'); loadSites();
+            if (e.status === 429) { log('Workers AI bị giới hạn tốc độ, tạm dừng 60s', 'e'); loadSites(); return setTimeout(loop, 60000); }
+            running[id] = false; log(errText(e), 'e'); loadSites();
           });
         })();
       }
 
       function showQueries(id, holder) {
-        api('GET', '/api/sites/' + id + '/queries?limit=20').then(function (j) {
+        api('GET', '/api/sites/' + encodeURIComponent(id) + '/queries?limit=20').then(function (j) {
           holder.innerHTML = j.queries.length
-            ? '<table><tr><th>Question</th><th>Answer</th><th>When</th></tr>' + j.queries.map(function (q) {
-                return '<tr><td class="q">' + esc(q.prompt) + '</td><td class="r">' + esc((q.response || '').slice(0, 160)) + ((q.response || '').length > 160 ? '…' : '') + '</td><td class="t">' + esc(q.created_at) + '</td></tr>';
-              }).join('') + '</table>'
-            : '<div class="empty">No questions logged yet.</div>';
-        }).catch(function (e) { log(e.message, 'e'); });
+            ? '<div class="tbl"><table><tr><th>Câu hỏi</th><th>Trả lời</th><th>Lúc</th></tr>' + j.queries.map(function (q) {
+                return '<tr><td class="q">' + esc(q.prompt) + '</td><td class="r">' + esc(cut(q.response, 160)) + '</td><td class="t">' + esc(fmtTime(q.created_at)) + '</td></tr>';
+              }).join('') + '</table></div>'
+            : '<div class="empty">Chưa có câu hỏi nào.</div>';
+        }).catch(function (e) { log(errText(e), 'e'); });
       }
 
       function registered(j) {
-        return 'queued ' + j.queued + ' pages for ' + j.siteId + ' (' + j.domain + ')' + (j.removed ? ', removed ' + j.removed + ' no longer in the sitemap' : '');
+        return 'đã đưa ' + j.queued + ' trang của ' + j.siteId + ' (' + j.domain + ') vào hàng đợi' + (j.removed ? ', xoá ' + j.removed + ' trang không còn trong sitemap' : '');
       }
 
       sitesEl.addEventListener('click', function (e) {
         var btn = e.target.closest('button[data-act]'); if (!btn) return;
         var card = btn.closest('.site'), id = card.getAttribute('data-id'), act = btn.getAttribute('data-act');
-        if (act === 'batch') processBatch(id).then(loadSites).catch(function (er) { log(er.message, 'e'); });
+        if (act === 'batch') processBatch(id).then(loadSites).catch(function (er) { log(errText(er), 'e'); });
         if (act === 'all') indexAll(id);
         if (act === 'queries') showQueries(id, $('.queries', card));
         if (act === 'recrawl') {
           var sm = $('.top a', card).getAttribute('href');
-          api('POST', '/api/sites/index', { siteId: id, sitemapUrl: sm }).then(function (j) { log(registered(j), 's'); loadSites(); }).catch(function (er) { log(er.message, 'e'); });
+          api('POST', '/api/sites/index', { siteId: id, sitemapUrl: sm }).then(function (j) { log(registered(j), 's'); loadSites(); }).catch(function (er) { log(errText(er), 'e'); });
         }
-        if (act === 'delete' && confirm('Delete site "' + id + '", its pages, chat log and vectors?')) {
-          api('DELETE', '/api/sites/' + id).then(function (j) { log('deleted ' + id + ' (' + j.vectorsDeleted + ' vectors)', 's'); loadSites(); }).catch(function (er) { log(er.message, 'e'); });
+        if (act === 'delete' && confirm('Xoá site "' + id + '" cùng các trang, nhật ký chat và vectors?')) {
+          api('DELETE', '/api/sites/' + encodeURIComponent(id)).then(function (j) { log('đã xoá ' + id + ' (' + j.vectorsDeleted + ' vectors)', 's'); loadSites(); }).catch(function (er) { log(errText(er), 'e'); });
         }
       });
 
-      $('#connect').onclick = function () {
-        token = tokenEl.value.trim(); sessionStorage.setItem('docflare_admin_token', token);
-        loadSites().then(function (s) { if (s) log('connected, ' + s.length + ' site(s)', 's'); });
-      };
       $('#refresh').onclick = loadSites;
       $('#reg').onsubmit = function (e) {
         e.preventDefault();
         var body = { siteId: $('#siteId').value.trim(), sitemapUrl: $('#sitemap').value.trim() };
         var d = $('#domain').value.trim(); if (d) body.domain = d;
         api('POST', '/api/sites/index', body).then(function (j) { log(registered(j), 's'); loadSites(); })
-          .catch(function (er) { log(er.message, 'e'); });
+          .catch(function (er) { log(errText(er), 'e'); });
       };
 
-      if (token) loadSites();
+      /** Fill a <select> with the registered sites, keeping the current (or a preferred) value. */
+      function fillSiteSelect(sel, placeholder, prefer) {
+        var cur = prefer != null ? prefer : sel.value;
+        sel.textContent = '';
+        var ph = document.createElement('option'); ph.value = ''; ph.textContent = placeholder; sel.appendChild(ph);
+        var ids = sitesCache.map(function (s) { return s.id; });
+        if (cur && ids.indexOf(cur) < 0) ids.push(cur);
+        ids.forEach(function (id) { var o = document.createElement('option'); o.value = id; o.textContent = id; sel.appendChild(o); });
+        sel.value = cur || '';
+      }
+      function populateSiteSelects() {
+        var kbSel = $('#kbSite');
+        var before = kb.siteId;
+        fillSiteSelect(kbSel, sitesCache.length ? '— chọn site —' : '— chưa có site —', before || (sitesCache[0] && sitesCache[0].id) || '');
+        kb.siteId = kbSel.value;
+        if (kb.siteId !== before && activeTab === 'knowledge') loadDocs();
+        fillSiteSelect($('#mcpSite'), '— chọn site —');
+      }
+
+      /* ================= Livechat ================= */
+      var STATUS = {
+        open: ['Đang mở', 'ok'], needs_human: ['Cần người hỗ trợ', 'err'], claimed: ['Đang xử lý', 'mu'],
+        draft: ['Bản nháp', 'warn'], sending: ['Đang gửi', 'mu'], sent: ['Đã gửi', 'ok'], failed: ['Gửi lỗi', 'err'],
+        unknown: ['⚠ Không rõ đã gửi chưa', 'warn'], superseded: ['Nháp cũ (đã thay thế)', 'mu']
+      };
+      var EDITABLE = { draft: 1, failed: 1, needs_human: 1, unknown: 1 };
+      var UNKNOWN_WARN = 'Lần gửi trước có thể đã tới khách (hết thời gian chờ / mất kết nối). Hãy kiểm tra trên nền tảng trước khi gửi lại để tránh gửi trùng.';
+      function badge(st) { var m = STATUS[st] || [st || '—', 'mu']; return '<span class="badge b-' + m[1] + '">' + esc(m[0]) + '</span>'; }
+
+      var lc = { filter: 'all', list: [], openId: null, drafts: {}, msgs: [] };
+      var lcList = $('#lcList'), lcErr = $('#lcErr'), lcMsgNote = $('#lcMsgNote');
+
+      function findConv(id) { for (var i = 0; i < lc.list.length; i++) if (lc.list[i].id === id) return lc.list[i]; return null; }
+
+      function loadConversations() {
+        return api('GET', '/api/social/conversations?status=' + encodeURIComponent(lc.filter) + '&limit=50').then(function (j) {
+          lc.list = j.conversations || [];
+          note(lcErr, '');
+          renderConversations();
+          $('#lcUpdated').textContent = 'Cập nhật ' + fmtTime(new Date().toISOString());
+          if (lc.openId) loadMessages(lc.openId);
+        }).catch(function (e) { note(lcErr, errText(e), 'err'); });
+      }
+
+      function renderConversations() {
+        if (!lc.list.length) { lcList.innerHTML = '<div class="empty">Không có hội thoại nào.</div>'; return; }
+        lcList.innerHTML = lc.list.map(function (c) {
+          return '<article class="conv' + (c.id === lc.openId ? ' active' : '') + '" data-id="' + esc(c.id) + '">' +
+            '<div class="conv-top"><span class="pill">' + esc(c.platform || '?') + '</span><b>' + esc(c.participantName || c.conversationId || 'Khách') + '</b>' + badge(c.status) +
+              '<span class="sp"></span><span class="t">' + esc(fmtTime(c.lastMessageAt || c.updatedAt)) + '</span></div>' +
+            '<div class="conv-line"><span class="lbl">Khách:</span>' + (c.lastCustomerText ? esc(cut(c.lastCustomerText, 220)) : '<span class="t">—</span>') + '</div>' +
+            '<div class="conv-line"><span class="lbl">AI:</span>' + (c.lastReplyText ? esc(cut(c.lastReplyText, 220)) : '<span class="t">—</span>') + ' ' + (c.lastReplyStatus ? badge(c.lastReplyStatus) : '') + '</div>' +
+            '<div class="row"><label class="switch"><input type="checkbox" data-act="ai"' + (c.aiEnabled ? ' checked' : '') + '> AI tự trả lời</label>' +
+              '<button type="button" data-act="open">Xem hội thoại</button></div>' +
+          '</article>';
+        }).join('');
+      }
+
+      lcList.addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-act="open"]'); if (!btn) return;
+        openConversation(btn.closest('.conv').getAttribute('data-id'));
+      });
+      lcList.addEventListener('change', function (e) {
+        var cb = e.target.closest('input[data-act="ai"]'); if (!cb) return;
+        toggleAi(cb.closest('.conv').getAttribute('data-id'), cb.checked, cb);
+      });
+
+      function toggleAi(id, enabled, cb) {
+        cb.disabled = true;
+        api('POST', '/api/social/conversations/' + encodeURIComponent(id) + '/ai', { enabled: enabled }).then(function (j) {
+          var updated = j && j.conversation ? j.conversation : j, c = findConv(id);
+          if (c && updated && typeof updated === 'object') Object.assign(c, updated);
+          else if (c) c.aiEnabled = enabled;
+          note(lcErr, '');
+          renderConversations();
+          if (lc.openId === id) renderDetailHead();
+          if (lc.filter !== 'all') loadConversations();
+        }).catch(function (e) {
+          cb.checked = !enabled; cb.disabled = false;
+          note(lcErr, 'Không đổi được trạng thái AI: ' + errText(e), 'err');
+        });
+      }
+
+      function openConversation(id) {
+        lc.openId = id;
+        note(lcMsgNote, '');
+        $('#lcDetailEmpty').hidden = true;
+        $('#lcDetailBody').hidden = false;
+        $('#lcMsgs').innerHTML = '<div class="empty">Đang tải…</div>';
+        renderConversations();
+        renderDetailHead();
+        loadMessages(id);
+        if (window.innerWidth <= 860) $('#lcDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      function renderDetailHead() {
+        var c = findConv(lc.openId) || {};
+        $('#lcDetailTitle').textContent = (c.participantName || 'Hội thoại') + (c.platform ? ' · ' + c.platform : '');
+        $('#lcDetailSub').textContent = (c.conversationId ? 'ID ' + c.conversationId + ' · ' : '') + 'AI ' + (c.aiEnabled ? 'đang bật' : 'đang tắt');
+      }
+
+      function loadMessages(id) {
+        return api('GET', '/api/social/conversations/' + encodeURIComponent(id) + '/messages').then(function (j) {
+          if (lc.openId !== id) return;
+          lc.msgs = j.messages || [];
+          // Do not re-render under the operator's cursor; drafts are kept in lc.drafts anyway.
+          var focused = document.activeElement;
+          if (focused && focused.closest && focused.closest('#lcMsgs') && focused.tagName === 'TEXTAREA') return;
+          renderMessages();
+        }).catch(function (e) { if (lc.openId === id) note(lcMsgNote, errText(e), 'err'); });
+      }
+
+      function renderMessages() {
+        var box = $('#lcMsgs');
+        if (!lc.msgs.length) { box.innerHTML = '<div class="empty">Chưa có tin nhắn nào được ghi nhận.</div>'; return; }
+        box.innerHTML = lc.msgs.map(function (m) {
+          var id = esc(m.id);
+          var html = '<div class="m' + (m.status === 'superseded' ? ' superseded' : '') + '" data-id="' + id + '" data-status="' + esc(m.status) + '">';
+          if (m.customerText) html += '<div class="bubble in">' + esc(m.customerText) + '<div class="meta">Khách · ' + esc(fmtTime(m.createdAt)) + '</div></div>';
+          html += '<div class="bubble out">' + (m.replyText ? esc(m.replyText) : '<span class="t">(chưa có trả lời)</span>') +
+            '<div class="meta">' + badge(m.status) + '<span>' + esc(fmtTime(m.updatedAt || m.createdAt)) + '</span></div>' +
+            (m.error ? '<div class="errt">' + esc(m.error) + '</div>' : '') + '</div>';
+          if (EDITABLE[m.status]) {
+            var val = Object.prototype.hasOwnProperty.call(lc.drafts, m.id) ? lc.drafts[m.id] : (m.replyText || '');
+            html += '<div class="edit">' + (m.status === 'unknown' ? '<p class="warnt">⚠ ' + esc(UNKNOWN_WARN) + '</p>' : '') +
+              '<label for="reply-' + id + '">Nội dung gửi cho khách (tối đa 2000 ký tự)</label>' +
+              '<textarea id="reply-' + id + '" data-id="' + id + '" rows="4" maxlength="2000">' + esc(val) + '</textarea>' +
+              '<div class="row"><button type="button" class="pri" data-act="send" data-id="' + id + '">Gửi</button><span class="cnt">' + fmtNum(val.length) + ' / 2.000</span></div></div>';
+          }
+          return html + '</div>';
+        }).join('');
+      }
+
+      $('#lcMsgs').addEventListener('input', function (e) {
+        var ta = e.target; if (ta.tagName !== 'TEXTAREA') return;
+        lc.drafts[ta.getAttribute('data-id')] = ta.value;
+        var cnt = $('.cnt', ta.parentNode); if (cnt) cnt.textContent = fmtNum(ta.value.length) + ' / 2.000';
+      });
+      $('#lcMsgs').addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-act="send"]'); if (!btn) return;
+        sendMessage(btn.getAttribute('data-id'), btn);
+      });
+
+      function sendMessage(id, btn) {
+        var ta = $('textarea', btn.closest('.m'));
+        var text = ta ? ta.value.trim() : '';
+        if (!text) { note(lcMsgNote, 'Nội dung trống, không thể gửi.', 'err'); return; }
+        if (text.length > 2000) { note(lcMsgNote, 'Nội dung vượt quá 2000 ký tự.', 'err'); return; }
+        var unknown = btn.closest('.m').getAttribute('data-status') === 'unknown';
+        if (unknown) {
+          if (!confirm('⚠ ' + UNKNOWN_WARN + '\n\nBạn đã kiểm tra và chắc chắn khách CHƯA nhận được tin này? Gửi lại?')) return;
+        } else if (!confirm('Gửi tin này tới khách hàng thật?')) return;
+        btn.disabled = true; btn.textContent = 'Đang gửi…';
+        var convId = lc.openId;
+        var body = { text: text };
+        if (unknown) body.confirmUnknown = true;
+        api('POST', '/api/social/messages/' + encodeURIComponent(id) + '/send', body).then(function (j) {
+          var m = j && j.message ? j.message : j;
+          delete lc.drafts[id];
+          if (m && m.status === 'failed') note(lcMsgNote, 'Gửi thất bại: ' + (m.error || 'lỗi không rõ'), 'err');
+          else if (m && (m.status === 'unknown' || m.status === 'sending')) note(lcMsgNote, '⚠ Không rõ tin đã tới khách chưa: ' + (m.error || 'chưa ghi nhận kết quả') + '. Kiểm tra trên nền tảng trước khi gửi lại.', 'err');
+          else note(lcMsgNote, 'Đã gửi tin nhắn.', 'ok');
+        }).catch(function (e) {
+          if (e.status === 409 && e.code === 'confirm_required') note(lcMsgNote, '⚠ ' + UNKNOWN_WARN + ' Đã tải lại hội thoại.', 'err');
+          else if (e.status === 409) note(lcMsgNote, 'Tin này không còn ở trạng thái có thể gửi (có thể đã được gửi, đang gửi hoặc đã bị thay bằng nháp mới). Đã tải lại hội thoại.', 'err');
+          else { note(lcMsgNote, 'Gửi thất bại: ' + errText(e), 'err'); btn.disabled = false; btn.textContent = 'Gửi'; }
+        }).then(function () {
+          if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+          if (lc.openId === convId) loadMessages(convId);
+          loadConversations();
+        });
+      }
+
+      $('#lcDetailReload').onclick = function () { if (lc.openId) { note(lcMsgNote, ''); loadMessages(lc.openId); } };
+      $('#lcDetailClose').onclick = function () {
+        lc.openId = null; lc.msgs = [];
+        $('#lcDetailBody').hidden = true; $('#lcDetailEmpty').hidden = false;
+        renderConversations();
+      };
+      $$('#lcFilter button').forEach(function (b) {
+        b.onclick = function () {
+          lc.filter = b.getAttribute('data-f');
+          $$('#lcFilter button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+          lcList.innerHTML = '<div class="empty">Đang tải…</div>';
+          loadConversations();
+        };
+      });
+      $('#lcRefresh').onclick = function () { loadConversations(); };
+      $('#lcPoll').onclick = function () {
+        var btn = this, out = $('#lcPollNote');
+        btn.disabled = true; btn.textContent = 'Đang quét…';
+        api('POST', '/api/social/poll').then(function (j) {
+          var errs = j.errors || [];
+          var text = 'Đã kiểm tra ' + fmtNum(j.checked) + ' · Trả lời ' + fmtNum(j.replied) + ' · Nháp ' + fmtNum(j.drafted) +
+            ' · Chuyển người ' + fmtNum(j.handedOff) + ' · Bỏ qua ' + fmtNum(j.skipped);
+          if (errs.length) text += '\nLỗi (' + errs.length + '):\n' + errs.map(function (x) { return '• ' + (typeof x === 'string' ? x : JSON.stringify(x)); }).join('\n');
+          note(out, text, errs.length ? 'err' : 'ok');
+          loadConversations();
+        }).catch(function (e) { note(out, 'Quét thất bại: ' + errText(e), 'err'); })
+          .then(function () { btn.disabled = false; btn.textContent = 'Quét ngay'; });
+      };
+
+      // Auto-refresh every 30s while the livechat tab is open and the page is visible.
+      setInterval(function () {
+        if (token && activeTab === 'livechat' && document.visibilityState === 'visible') loadConversations();
+      }, 30000);
+      document.addEventListener('visibilitychange', function () {
+        if (token && activeTab === 'livechat' && document.visibilityState === 'visible') loadConversations();
+      });
+
+      /* ================= Knowledge ================= */
+      var CATS = { pricing: 'Bảng giá', faq: 'FAQ', policy: 'Chính sách', general: 'Chung' };
+      var KB_MAX = 50000;
+      var kb = { siteId: '', docs: [] };
+      var kbErr = $('#kbErr'), kbNote = $('#kbNote');
+      function kbPath(rest) { return '/api/sites/' + encodeURIComponent(kb.siteId) + '/knowledge' + (rest || ''); }
+
+      function loadDocs() {
+        if (!kb.siteId) { $('#kbDocs').innerHTML = '<div class="empty">Chọn một site để xem tài liệu.</div>'; return Promise.resolve(); }
+        var site = kb.siteId;
+        return api('GET', kbPath()).then(function (j) {
+          if (site !== kb.siteId) return;
+          kb.docs = j.docs || [];
+          note(kbErr, '');
+          renderDocs();
+        }).catch(function (e) { note(kbErr, errText(e), 'err'); });
+      }
+
+      function renderDocs() {
+        if (!kb.docs.length) { $('#kbDocs').innerHTML = '<div class="empty">Site này chưa có tài liệu nào. Thêm ở form bên dưới.</div>'; return; }
+        $('#kbDocs').innerHTML = '<table><tr><th>Tiêu đề</th><th>Loại</th><th>Đoạn</th><th>Ký tự</th><th>Cập nhật</th><th></th></tr>' +
+          kb.docs.map(function (d) {
+            var id = esc(d.id);
+            return '<tr><td class="q">' + esc(d.title) + '</td><td class="n">' + esc(CATS[d.category] || d.category) + '</td>' +
+              '<td class="n">' + fmtNum(d.chunkCount) + '</td><td class="n">' + fmtNum(d.contentLength) + '</td>' +
+              '<td class="t">' + esc(fmtTime(d.updatedAt || d.createdAt)) + '</td>' +
+              '<td class="acts"><button type="button" data-act="edit" data-id="' + id + '">Sửa</button> ' +
+              '<button type="button" data-act="reindex" data-id="' + id + '">Re-index</button> ' +
+              '<button type="button" class="dng" data-act="del" data-id="' + id + '">Xoá</button></td></tr>';
+          }).join('') + '</table>';
+      }
+
+      function findDoc(id) { for (var i = 0; i < kb.docs.length; i++) if (kb.docs[i].id === id) return kb.docs[i]; return null; }
+
+      $('#kbDocs').addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-act]'); if (!btn) return;
+        var id = btn.getAttribute('data-id'), act = btn.getAttribute('data-act'), d = findDoc(id) || { title: id };
+        if (act === 'edit') {
+          api('GET', kbPath('/' + encodeURIComponent(id))).then(function (j) {
+            var doc = j.doc || {};
+            $('#kbId').value = doc.id || id;
+            $('#kbTitle').value = doc.title || '';
+            $('#kbCat').value = CATS[doc.category] ? doc.category : 'general';
+            $('#kbContent').value = doc.content || '';
+            updateKbCount();
+            $('#kbFormTitle').textContent = 'Sửa tài liệu';
+            note(kbNote, '');
+            $('#kbForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            $('#kbTitle').focus({ preventScroll: true });
+          }).catch(function (er) { note(kbErr, errText(er), 'err'); });
+        }
+        if (act === 'reindex') {
+          btn.disabled = true;
+          api('POST', kbPath('/' + encodeURIComponent(id) + '/reindex')).then(function (j) {
+            note(kbErr, 'Đã re-index "' + d.title + '": ' + fmtNum(j.chunksIndexed) + ' đoạn.', 'ok');
+            loadDocs();
+          }).catch(function (er) { note(kbErr, errText(er), 'err'); btn.disabled = false; });
+        }
+        if (act === 'del' && confirm('Xoá tài liệu "' + d.title + '" và vectors của nó?')) {
+          api('DELETE', kbPath('/' + encodeURIComponent(id))).then(function (j) {
+            note(kbErr, 'Đã xoá "' + d.title + '" (' + fmtNum(j.vectorsDeleted) + ' vectors).', 'ok');
+            if ($('#kbId').value === id) resetKbForm();
+            loadDocs();
+          }).catch(function (er) { note(kbErr, errText(er), 'err'); });
+        }
+      });
+
+      function updateKbCount() {
+        var n = $('#kbContent').value.length, el = $('#kbCount');
+        el.textContent = fmtNum(n) + ' / 50.000 ký tự';
+        el.className = 'cnt' + (n > KB_MAX ? ' over' : '');
+      }
+      function resetKbForm() {
+        $('#kbId').value = ''; $('#kbTitle').value = ''; $('#kbCat').value = 'general'; $('#kbContent').value = '';
+        $('#kbFormTitle').textContent = 'Thêm tài liệu mới';
+        updateKbCount();
+      }
+      $('#kbContent').addEventListener('input', updateKbCount);
+      $('#kbNew').onclick = function () { resetKbForm(); note(kbNote, ''); $('#kbTitle').focus(); };
+      $('#kbSite').onchange = function () { kb.siteId = this.value; kb.docs = []; resetKbForm(); note(kbNote, ''); note(kbErr, ''); loadDocs(); };
+      $('#kbReload').onclick = function () { loadDocs(); };
+
+      $('#kbForm').onsubmit = function (e) {
+        e.preventDefault();
+        if (!kb.siteId) { note(kbNote, 'Hãy chọn site trước.', 'err'); return; }
+        var title = $('#kbTitle').value.trim(), content = $('#kbContent').value;
+        if (!title) { note(kbNote, 'Tiêu đề không được trống.', 'err'); return; }
+        if (title.length > 200) { note(kbNote, 'Tiêu đề tối đa 200 ký tự.', 'err'); return; }
+        if (!content.trim()) { note(kbNote, 'Nội dung không được trống.', 'err'); return; }
+        if (content.length > KB_MAX) { note(kbNote, 'Nội dung tối đa 50.000 ký tự.', 'err'); return; }
+        var body = { title: title, content: content, category: $('#kbCat').value };
+        if ($('#kbId').value) body.id = $('#kbId').value;
+        var btn = $('#kbSave'); btn.disabled = true; btn.textContent = 'Đang lưu…';
+        api('POST', kbPath(), body).then(function (j) {
+          if (j.doc && j.doc.id) { $('#kbId').value = j.doc.id; $('#kbFormTitle').textContent = 'Sửa tài liệu'; }
+          note(kbNote, 'Đã lưu "' + title + '" — ' + fmtNum(j.chunksIndexed) + ' đoạn đã index.', 'ok');
+          loadDocs();
+        }).catch(function (er) { note(kbNote, errText(er), 'err'); })
+          .then(function () { btn.disabled = false; btn.textContent = 'Lưu & index'; });
+      };
+
+      $('#kbAsk').onclick = function () {
+        var q = $('#kbQ').value.trim(), errEl = $('#kbAskErr'), btn = this;
+        if (!kb.siteId) { note(errEl, 'Hãy chọn site trước.', 'err'); return; }
+        if (!q) { note(errEl, 'Nhập câu hỏi.', 'err'); return; }
+        btn.disabled = true; btn.textContent = 'Đang hỏi…'; note(errEl, '');
+        api('POST', '/api/sites/' + encodeURIComponent(kb.siteId) + '/test-chat', { question: q }).then(function (j) {
+          $('#kbAnswer').textContent = j.answer || '(không có câu trả lời)';
+          $('#kbSources').innerHTML = (j.sources || []).map(function (s) {
+            var url = String(s.url || ''), label = esc(s.title || url);
+            var score = typeof s.score === 'number' ? ' <span class="t">(' + s.score.toFixed(2) + ')</span>' : '';
+            return /^https?:\/\//i.test(url)
+              ? '<li><a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>' + score + '</li>'
+              : '<li>' + label + ' <span class="mono t">' + esc(url) + '</span>' + score + '</li>';
+          }).join('');
+          $('#kbAnswerWrap').hidden = false;
+        }).catch(function (er) { note(errEl, errText(er), 'err'); })
+          .then(function () { btn.disabled = false; btn.textContent = 'Hỏi'; });
+      };
+
+      /* ================= Settings (AI & MCP) ================= */
+      function loadSettings() {
+        return api('GET', '/api/settings').then(function (j) {
+          settings = j; fillAi(j); fillMcp(j);
+          note($('#aiNote'), ''); note($('#mcpNote'), '');
+        }).catch(function (e) {
+          note(activeTab === 'mcp' ? $('#mcpNote') : $('#aiNote'), 'Không tải được cấu hình: ' + errText(e), 'err');
+        });
+      }
+      function saveSettings(body) { return api('POST', '/api/settings', body).then(function (j) { settings = j; return j; }); }
+      $$('[data-reload-settings]').forEach(function (b) { b.onclick = function () { loadSettings(); }; });
+
+      function setSecretUi(input, stateEl, clearBtn, isSet, what, undecryptable) {
+        input.value = '';
+        input.placeholder = isSet ? '•••••• đã lưu — để trống để giữ nguyên' : (undecryptable ? 'nhập lại ' + what : 'chưa có ' + what);
+        stateEl.innerHTML = isSet ? '<span class="badge b-ok">đã lưu</span>'
+          : undecryptable ? '<span class="badge b-err" title="SETTINGS_KEY hoặc ADMIN_TOKEN đã đổi nên ' + what + ' đã lưu không giải mã được; hãy nhập lại.">⚠ không giải mã được — nhập lại</span>'
+          : '<span class="badge b-mu">chưa có</span>';
+        clearBtn.disabled = !isSet;
+      }
+
+      function fillAi(s) {
+        var p = s.prompt || {}, f = s.fallback || {};
+        $('#aiPrompt').value = p.systemPrompt || '';
+        updatePromptCount();
+        $('#aiStrategy').value = f.strategy || 'cf-first';
+        $('#aiBase').value = f.baseUrl || '';
+        $('#aiModel').value = f.model || '';
+        setSecretUi($('#aiKey'), $('#aiKeyState'), $('#aiKeyClear'), !!f.apiKeySet, 'key', !!f.apiKeyUndecryptable);
+      }
+      function updatePromptCount() {
+        var n = $('#aiPrompt').value.length, el = $('#aiPromptCount');
+        el.textContent = fmtNum(n) + ' / 4.000 ký tự'; el.className = 'cnt' + (n > 4000 ? ' over' : '');
+      }
+      $('#aiPrompt').addEventListener('input', updatePromptCount);
+
+      $('#aiForm').onsubmit = function (e) {
+        e.preventDefault();
+        var out = $('#aiNote');
+        var body = { prompt: { systemPrompt: $('#aiPrompt').value.trim() },
+          fallback: { strategy: $('#aiStrategy').value, baseUrl: $('#aiBase').value.trim(), model: $('#aiModel').value.trim() } };
+        var key = $('#aiKey').value.trim();
+        if (key) body.fallback.apiKey = key;
+        saveSettings(body).then(function (j) { fillAi(j); note(out, 'Đã lưu cấu hình AI.', 'ok'); })
+          .catch(function (er) { note(out, errText(er), 'err'); });
+      };
+      $('#aiKeyClear').onclick = function () {
+        if (!confirm('Xoá API key fallback đã lưu?')) return;
+        saveSettings({ fallback: { apiKey: null } }).then(function (j) { fillAi(j); note($('#aiNote'), 'Đã xoá API key.', 'ok'); })
+          .catch(function (er) { note($('#aiNote'), errText(er), 'err'); });
+      };
+
+      var MODE_WARN = {
+        off: ['Agent social đang tắt: không quét hộp thư, không trả lời.', ''],
+        draft: ['Chế độ draft: AI chỉ soạn nháp, bạn xem lại và bấm "Gửi" trong tab Livechat.', ''],
+        auto: ['⚠ Chế độ auto: AI sẽ TỰ ĐỘNG GỬI câu trả lời tới KHÁCH HÀNG THẬT trên mạng xã hội, không qua duyệt. Chỉ bật khi đã thử kỹ ở chế độ draft.', 'strong']
+      };
+      function updateModeWarn() {
+        var w = MODE_WARN[$('#mcpMode').value] || MODE_WARN.off, el = $('#mcpModeWarn');
+        el.textContent = w[0]; el.className = 'warnbox' + (w[1] ? ' ' + w[1] : '');
+      }
+      $('#mcpMode').addEventListener('change', updateModeWarn);
+
+      function fillMcp(s) {
+        var m = s.mcp || {};
+        $('#mcpUrl').value = m.url || '';
+        $('#mcpProxy').value = m.proxyTool || '';
+        setSecretUi($('#mcpToken'), $('#mcpTokenState'), $('#mcpTokenClear'), !!m.tokenSet, 'token', !!m.tokenUndecryptable);
+        fillSiteSelect($('#mcpSite'), '— chọn site —', m.socialSiteId || '');
+        $('#mcpMode').value = m.socialMode || 'off';
+        updateModeWarn();
+        $('#mcpInterval').value = m.pollIntervalMinutes != null ? m.pollIntervalMinutes : '';
+        $('#mcpMax').value = m.maxRepliesPerTick != null ? m.maxRepliesPerTick : '';
+        $('#mcpAccount').value = m.accountId || '';
+        $('#mcpToolList').value = m.toolListConversations || '';
+        $('#mcpToolMsgs').value = m.toolListMessages || '';
+        $('#mcpToolSend').value = m.toolSendMessage || '';
+        $('#mcpEnabledAt').textContent = m.socialEnabledAt ? fmtTime(m.socialEnabledAt) : 'chưa bật';
+      }
+
+      function intOrUndef(v) { var n = parseInt(v, 10); return isNaN(n) ? undefined : n; }
+
+      $('#mcpForm').onsubmit = function (e) {
+        e.preventDefault();
+        var out = $('#mcpNote'), mode = $('#mcpMode').value;
+        if (mode !== 'off' && !$('#mcpSite').value) { note(out, 'Hãy chọn site tri thức khi bật chế độ draft/auto.', 'err'); return; }
+        var wasAuto = settings && settings.mcp && settings.mcp.socialMode === 'auto';
+        if (mode === 'auto' && !wasAuto && !confirm('Bật chế độ AUTO: AI sẽ tự gửi trả lời tới khách hàng thật mà không qua duyệt. Tiếp tục?')) return;
+        var mcp = {
+          url: $('#mcpUrl').value.trim(), proxyTool: $('#mcpProxy').value.trim(), socialSiteId: $('#mcpSite').value,
+          socialMode: mode, accountId: $('#mcpAccount').value.trim(),
+          toolListConversations: $('#mcpToolList').value.trim(), toolListMessages: $('#mcpToolMsgs').value.trim(),
+          toolSendMessage: $('#mcpToolSend').value.trim()
+        };
+        var iv = intOrUndef($('#mcpInterval').value), mx = intOrUndef($('#mcpMax').value);
+        if (iv !== undefined) mcp.pollIntervalMinutes = iv;
+        if (mx !== undefined) mcp.maxRepliesPerTick = mx;
+        var tok = $('#mcpToken').value.trim();
+        if (tok) mcp.token = tok;
+        saveSettings({ mcp: mcp }).then(function (j) { fillMcp(j); note(out, 'Đã lưu cấu hình MCP.', 'ok'); })
+          .catch(function (er) { note(out, errText(er), 'err'); });
+      };
+      $('#mcpTokenClear').onclick = function () {
+        if (!confirm('Xoá token MCP đã lưu?')) return;
+        saveSettings({ mcp: { token: null } }).then(function (j) { fillMcp(j); note($('#mcpNote'), 'Đã xoá token.', 'ok'); })
+          .catch(function (er) { note($('#mcpNote'), errText(er), 'err'); });
+      };
+      $('#mcpTest').onclick = function () {
+        var btn = this, wrap = $('#mcpTestOut'), out = $('#mcpTestNote'), tools = $('#mcpTools');
+        btn.disabled = true; btn.textContent = 'Đang kiểm tra…';
+        tools.innerHTML = '';
+        api('POST', '/api/mcp/test-connection').then(function (j) {
+          if (j.ok) {
+            var list = j.tools || [];
+            note(out, 'Kết nối OK' + (j.serverName ? ' — ' + j.serverName : '') + ' — ' + list.length + ' công cụ.', 'ok');
+            tools.innerHTML = list.map(function (t) { return '<span class="mono">' + esc(typeof t === 'string' ? t : (t && t.name)) + '</span>'; }).join('');
+          } else {
+            note(out, 'Kết nối thất bại: ' + (j.error || 'lỗi không rõ'), 'err');
+          }
+        }).catch(function (er) { note(out, 'Kết nối thất bại: ' + errText(er), 'err'); })
+          .then(function () { wrap.hidden = false; btn.disabled = false; btn.textContent = 'Kiểm tra kết nối'; });
+      };
+
+      /* ================= Connect ================= */
+      function boot() {
+        settings = null;
+        return Promise.all([loadSites(), loadSettings()]).then(function (r) {
+          var s = r[0];
+          if (s) { log('đã kết nối, ' + s.length + ' site', 's'); note($('#connNote'), 'Đã kết nối — ' + s.length + ' site.', 'ok'); }
+          if (activeTab === 'livechat') loadConversations();
+          else if (activeTab === 'knowledge') loadDocs();
+        });
+      }
+      $('#connect').onclick = function () {
+        token = tokenEl.value.trim(); sessionStorage.setItem('docflare_admin_token', token);
+        boot();
+      };
+      tokenEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') $('#connect').click(); });
+
+      activate(activeTab, false, true);
+      if (token) boot();
     })();
   </script>
 </body>

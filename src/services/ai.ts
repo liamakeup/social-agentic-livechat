@@ -1,6 +1,7 @@
 /**
  * Workers AI helpers: embeddings, RAG prompt construction and text generation.
- * No external API keys - everything runs through the `AI` binding.
+ * Everything runs through the `AI` binding; an optional OpenAI-compatible provider (plain `fetch`)
+ * can take over text generation when Workers AI fails or is out of quota.
  */
 import type { ChatMessage, RetrievedChunk, Source } from '../types';
 
@@ -63,7 +64,7 @@ export class AiRateLimitError extends Error {
   }
 }
 
-function isRateLimitError(err: unknown): boolean {
+export function isRateLimitError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   // Workers AI error codes 3040 (rate limited) / 3036 (account limited) plus generic phrasing.
   return /rate.?limit|too many requests|\b429\b|\b3040\b|\b3036\b|daily limit|quota|capacity/i.test(msg);
@@ -174,9 +175,10 @@ export async function rerankChunks(ai: Ai, query: string, chunks: RetrievedChunk
 // RAG prompt
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `You are DocFlare, a friendly and precise documentation assistant for {{DOMAIN}}.
+/** First line of the system prompt; replaced by the admin-configured persona when one is set. */
+const DEFAULT_PERSONA = 'You are DocFlare, a friendly and precise documentation assistant for {{DOMAIN}}.';
 
-Rules:
+const SYSTEM_PROMPT_RULES = `Rules:
 - Answer ONLY using the documentation excerpts below. Never guess or use outside knowledge.
 - Reply in the language of the user's question (English question -> English answer, Vietnamese question -> Vietnamese answer), even when the excerpts are written in a different language. Translate the facts you use.
 - Answer directly, as if you knew the documentation yourself. Do not quote or list the excerpts, do not mention "the context", "the excerpts" or "the provided information", and do not add citation markers such as [1]. The sources are shown to the user separately.
@@ -203,6 +205,7 @@ export function buildRagMessages(
   chunks: RetrievedChunk[],
   history: ChatMessage[] = [],
   domain = 'this website',
+  persona = '',
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
   const context =
     chunks.length === 0
@@ -210,11 +213,14 @@ export function buildRagMessages(
       : chunks
           .map((chunk) => {
             const title = chunk.metadata.title || chunk.metadata.url;
-            return `Source: ${title} (${chunk.metadata.url})\n${chunk.metadata.text}`;
+            const where = /^https?:/i.test(chunk.metadata.url) ? ` (${chunk.metadata.url})` : '';
+            return `Source: ${title}${where}\n${chunk.metadata.text}`;
           })
           .join('\n\n---\n\n');
 
-  const system = SYSTEM_PROMPT.replace('{{DOMAIN}}', domain).replace('{{CONTEXT}}', context);
+  // Function replacers: domain, persona and page text must never be read as `$&`-style patterns.
+  const firstLine = persona.trim() || DEFAULT_PERSONA.replace('{{DOMAIN}}', () => domain);
+  const system = `${firstLine}\n\n${SYSTEM_PROMPT_RULES.replace('{{CONTEXT}}', () => context)}`;
 
   const trimmedHistory = history
     .slice(-MAX_HISTORY_TURNS)
@@ -330,4 +336,259 @@ export async function* iterateWorkersAiTokens(stream: ReadableStream<Uint8Array>
     if (!drained) await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
+}
+
+// ---------------------------------------------------------------------------
+// OpenAI-compatible fallback provider + hybrid routing
+// ---------------------------------------------------------------------------
+
+export type ProviderStrategy = 'cf-first' | 'external-first' | 'cf-only' | 'external-only';
+export const PROVIDER_STRATEGIES: readonly ProviderStrategy[] = ['cf-first', 'external-first', 'cf-only', 'external-only'];
+
+/** Text-generation routing. External is used only when baseUrl, apiKey and model are all set. */
+export interface FallbackConfig {
+  strategy: ProviderStrategy;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+}
+
+/** Workers AI non-streaming calls slower than this count as failed when a fallback is available. */
+export const CF_TIMEOUT_MS = 25_000;
+/** Whole-request budget for a non-streaming external call (time to first byte for streaming). */
+const EXTERNAL_TIMEOUT_MS = 30_000;
+/** Longest silence allowed between two chunks of an external stream before it is abandoned. */
+export const EXTERNAL_STREAM_IDLE_MS = 20_000;
+
+/** Raised when the external provider fails. Message carries the HTTP status only, never the key or body. */
+export class ExternalAiError extends Error {
+  constructor(
+    message: string,
+    public readonly status = 0,
+  ) {
+    super(message);
+    this.name = 'ExternalAiError';
+  }
+}
+
+export function isExternalConfigured(config: FallbackConfig | undefined): config is FallbackConfig {
+  return !!config && !!config.baseUrl && !!config.apiKey && !!config.model;
+}
+
+/** True for https URLs, and http URLs pointing at localhost (local proxies during development). */
+export function isAllowedProviderUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol === 'https:') return true;
+  return url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+}
+
+/** Provider order for a strategy; Workers AI only when the external provider is not configured. */
+function providerOrder(config: FallbackConfig | undefined): Array<'workers-ai' | 'external'> {
+  if (!isExternalConfigured(config)) return ['workers-ai'];
+  switch (config.strategy) {
+    case 'external-first':
+      return ['external', 'workers-ai'];
+    case 'cf-only':
+      return ['workers-ai'];
+    case 'external-only':
+      return ['external'];
+    default:
+      return ['workers-ai', 'external'];
+  }
+}
+
+function errorReason(err: unknown): string {
+  if (err instanceof ExternalAiError) return err.message;
+  if (err instanceof AiRateLimitError) return 'rate_limited';
+  if (err instanceof Error) return `${err.name}: ${err.message}`.slice(0, 200);
+  return String(err).slice(0, 200);
+}
+
+function chatCompletionsUrl(baseUrl: string): string {
+  return `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+}
+
+/**
+ * POST a chat completion. The timeout covers the response headers; for non-streaming calls the caller
+ * keeps the same signal while reading the body. A 429 becomes AiRateLimitError like Workers AI's.
+ */
+async function postExternal(
+  config: FallbackConfig,
+  messages: Array<{ role: string; content: string }>,
+  stream: boolean,
+): Promise<{ response: Response; clear: () => void }> {
+  if (!isAllowedProviderUrl(config.baseUrl)) throw new ExternalAiError('External LLM base URL must use https');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), EXTERNAL_TIMEOUT_MS);
+  const clear = () => clearTimeout(timer);
+  let response: Response;
+  try {
+    response = await fetch(chatCompletionsUrl(config.baseUrl), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: stream ? 'text/event-stream' : 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        temperature: TEMPERATURE,
+        stream,
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clear();
+    const aborted = err instanceof Error && err.name === 'AbortError';
+    throw new ExternalAiError(aborted ? 'External LLM timed out' : 'External LLM request failed');
+  }
+  if (!response.ok) {
+    clear();
+    await response.body?.cancel().catch(() => {});
+    if (response.status === 429) throw new AiRateLimitError();
+    throw new ExternalAiError(`External LLM HTTP ${response.status}`, response.status);
+  }
+  return { response, clear };
+}
+
+/** Non-streaming answer from the OpenAI-compatible provider. */
+export async function generateExternalAnswer(
+  config: FallbackConfig,
+  messages: Array<{ role: string; content: string }>,
+): Promise<string> {
+  const { response, clear } = await postExternal(config, messages, false);
+  try {
+    const output = (await response.json()) as TextGenerationOutput;
+    const text = outputText(output).trim();
+    if (!text) throw new ExternalAiError('External LLM returned an empty answer');
+    return text;
+  } catch (err) {
+    if (err instanceof ExternalAiError) throw err;
+    throw new ExternalAiError('External LLM returned an invalid response');
+  } finally {
+    clear();
+  }
+}
+
+/**
+ * Streaming answer from the OpenAI-compatible provider. The HTTP status is checked before the body is
+ * returned, so a failing provider is detected while a fallback is still possible. The OpenAI SSE shape
+ * (`choices[0].delta.content`) is understood by iterateWorkersAiTokens as is. A stream that stays
+ * silent for `idleMs` between chunks errors (the chat stream then ends with its error event).
+ */
+export async function generateExternalAnswerStream(
+  config: FallbackConfig,
+  messages: Array<{ role: string; content: string }>,
+  idleMs = EXTERNAL_STREAM_IDLE_MS,
+): Promise<ReadableStream<Uint8Array>> {
+  const { response, clear } = await postExternal(config, messages, true);
+  const type = response.headers.get('Content-Type') ?? '';
+  if (!type.includes('text/event-stream')) {
+    // Provider ignored `stream: true`: wrap the one-shot answer, which must not be empty (an empty
+    // answer is an error, so the next provider is tried). The request timeout still covers the body.
+    let output: TextGenerationOutput;
+    try {
+      output = (await response.json()) as TextGenerationOutput;
+    } catch {
+      throw new ExternalAiError('External LLM returned an invalid response');
+    } finally {
+      clear();
+    }
+    const text = outputText(output).trim();
+    if (!text) throw new ExternalAiError('External LLM returned an empty answer');
+    return textToWorkersAiStream(text);
+  }
+  clear();
+  if (!response.body) throw new ExternalAiError('External LLM returned no body');
+  return withIdleTimeout(response.body, idleMs);
+}
+
+/** Pass `source` through, erroring (and cancelling `source`) when no chunk arrives for `idleMs`. */
+export function withIdleTimeout(source: ReadableStream<Uint8Array>, idleMs: number): ReadableStream<Uint8Array> {
+  const reader = source.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const idle = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new ExternalAiError(`External LLM stream stalled for ${idleMs} ms`)), idleMs);
+      });
+      try {
+        const chunk = await Promise.race([reader.read(), idle]);
+        if (chunk.done) controller.close();
+        else controller.enqueue(chunk.value);
+      } catch (err) {
+        reader.cancel().catch(() => {});
+        controller.error(err);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Workers AI timed out after ${ms} ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/** Try each provider in order; log every hand-over; rethrow the last provider's error. */
+async function runWithFallback<T>(
+  config: FallbackConfig | undefined,
+  attempt: (provider: 'workers-ai' | 'external', hasNext: boolean) => Promise<T>,
+): Promise<T> {
+  const order = providerOrder(config);
+  let lastError: unknown;
+  for (let i = 0; i < order.length; i++) {
+    const provider = order[i] as 'workers-ai' | 'external';
+    const next = order[i + 1];
+    try {
+      return await attempt(provider, !!next);
+    } catch (err) {
+      lastError = err;
+      if (!next) break;
+      console.warn(JSON.stringify({ event: 'llm.fallback', from: provider, to: next, reason: errorReason(err) }));
+    }
+  }
+  throw lastError;
+}
+
+/** Non-streaming answer routed by `config.strategy` (plain Workers AI when no fallback is configured). */
+export async function generateHybridAnswer(
+  ai: Ai,
+  messages: Array<{ role: string; content: string }>,
+  config?: FallbackConfig,
+): Promise<string> {
+  return runWithFallback(config, (provider, hasNext) => {
+    if (provider === 'external') return generateExternalAnswer(config as FallbackConfig, messages);
+    return hasNext ? withTimeout(generateAnswer(ai, messages), CF_TIMEOUT_MS) : generateAnswer(ai, messages);
+  });
+}
+
+/**
+ * Streaming answer routed by `config.strategy`. Fallback happens only when a provider fails before it
+ * returns a stream; a stream that breaks midway ends with the chat stream's error event.
+ */
+export async function generateHybridAnswerStream(
+  ai: Ai,
+  messages: Array<{ role: string; content: string }>,
+  config?: FallbackConfig,
+): Promise<ReadableStream<Uint8Array>> {
+  return runWithFallback(config, (provider) =>
+    provider === 'external'
+      ? generateExternalAnswerStream(config as FallbackConfig, messages)
+      : generateAnswerStream(ai, messages),
+  );
 }

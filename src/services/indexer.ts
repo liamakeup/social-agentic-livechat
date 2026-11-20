@@ -5,7 +5,7 @@
  * budget. Batches are driven by the cron trigger and/or POST /api/sites/:siteId/process.
  */
 import type { Env, ExtractedPage, IndexProgress, TextChunk } from '../types';
-import { Db, type PageRow } from '../db/schema';
+import { Db, type KnowledgeDocRow, type PageRow } from '../db/schema';
 import { pageIdFor } from '../utils/hash';
 import { AiRateLimitError, embedTexts } from './ai';
 import { chunkText, extractPage, fetchSitemapUrls, truncateToTokens } from './crawler';
@@ -211,15 +211,77 @@ export async function processPendingPages(
   return result;
 }
 
-/** Remove a site: its vectors, pages, chat history and the site row itself. */
+/** Remove a site: its vectors (pages and knowledge docs), pages, docs, chat history and the site row. */
 export async function removeSite(env: Env, siteId: string): Promise<{ vectorsDeleted: number }> {
   const db = new Db(env.DB);
   const pages = await db.listPageVectors(siteId);
-  const vectorsDeleted = await deletePagesVectors(env.VECTOR_INDEX, pages);
+  const docs = (await db.markKnowledgeForSiteDeletion(siteId)).map((doc) => ({
+    id: knowledgePageId(doc.id),
+    chunk_count: doc.chunk_count,
+  }));
+  const vectorsDeleted = await deletePagesVectors(env.VECTOR_INDEX, [...pages, ...docs]);
   await db.deleteSite(siteId);
   return { vectorsDeleted };
 }
 
 export async function getProgress(env: Env, siteId: string): Promise<IndexProgress> {
   return new Db(env.DB).progress(siteId);
+}
+
+// ---------------------------------------------------------------------------
+// Direct knowledge docs (entered in the admin UI, no crawling)
+// ---------------------------------------------------------------------------
+
+/** Pseudo page id of a knowledge doc in Vectorize: vector ids are `kb-<docId>-<chunk>`. */
+export function knowledgePageId(docId: string): string {
+  return `kb-${docId}`;
+}
+
+/** Source URL stored for knowledge chunks. Not a link; the widget renders it as plain text. */
+export function knowledgeUrl(docId: string): string {
+  return `kb:${docId}`;
+}
+
+/**
+ * Chunk, embed and upsert a knowledge doc, then delete trailing vectors left by a longer previous
+ * version (`previousChunkCount`). Returns the new chunk count. The title is prepended to every
+ * embedding input, as for crawled pages.
+ */
+/** Number of vectors indexKnowledgeDoc will write for `content` (known before anything is written). */
+export function countKnowledgeChunks(content: string): number {
+  return chunkText(content).length;
+}
+
+export async function indexKnowledgeDoc(
+  env: Env,
+  doc: Pick<KnowledgeDocRow, 'id' | 'site_id' | 'title' | 'content'>,
+  previousChunkCount: number,
+): Promise<number> {
+  const pageId = knowledgePageId(doc.id);
+  const url = knowledgeUrl(doc.id);
+  const chunks = chunkText(doc.content);
+  if (chunks.length === 0) throw new Error('No text chunks produced');
+
+  const records = buildChunkRecords({ url, title: doc.title, description: '', text: doc.content }, chunks);
+  const embeddings = await embedTexts(
+    env.AI,
+    records.map((r) => r.embedInput),
+  );
+  const vectors: ChunkVector[] = records.map((record, i) => ({
+    id: chunkVectorId(pageId, record.index),
+    values: embeddings[i] as number[],
+    metadata: { siteId: doc.site_id, pageId, url, title: doc.title, chunk: record.index, text: record.text },
+  }));
+  await upsertChunks(env.VECTOR_INDEX, doc.site_id, vectors);
+
+  if (previousChunkCount > chunks.length) {
+    await deletePageVectors(env.VECTOR_INDEX, pageId, chunks.length, previousChunkCount);
+  }
+  return chunks.length;
+}
+
+/** Delete every vector of a knowledge doc. Returns the number of vector ids deleted. */
+export async function deleteKnowledgeDocVectors(env: Env, docId: string, chunkCount: number): Promise<number> {
+  await deletePageVectors(env.VECTOR_INDEX, knowledgePageId(docId), 0, chunkCount);
+  return Math.max(0, chunkCount);
 }

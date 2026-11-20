@@ -229,6 +229,7 @@ Re-running `/api/sites/index` for the same `siteId` re-queues every page and del
 ## Upgrading an existing deployment
 
 Run `bun run db:migrate` before `bun run deploy` whenever `migrations/` gained a file: the new Worker expects the new columns.
+`0002_social_livechat.sql` adds the tables for knowledge docs, admin settings and the social livechat; until it is applied, chat keeps working with env-var settings, but those features (and deleting a site) fail.
 
 Deployments from before the switch to `bge-m3` use a 384-dim index named `docflare-index`, which cannot hold 1024-dim vectors. The new index has a different name, so the old one stays untouched until you delete it:
 
@@ -288,6 +289,12 @@ Non-secret settings live in the `[vars]` section of `wrangler.toml`:
 | `ALLOWED_ORIGINS`      | `""`    | Comma-separated extra origins allowed to call `/api/chat` for any site. `*` allows everything.                           |
 | `DAILY_CHAT_LIMIT`     | `250`   | Max answered questions per site in a rolling 24 hours. `0` = unlimited.                                                  |
 | `QUERY_RETENTION_DAYS` | `90`    | Days of chat log kept in the `queries` table; older rows are deleted hourly by the cron trigger. `0` = keep forever.     |
+| `FALLBACK_BASE_URL`    | `""`    | OpenAI-compatible fallback LLM base URL (https), e.g. `https://api.groq.com/openai/v1`.                                  |
+| `FALLBACK_MODEL`       | `""`    | Model on that provider. The fallback is active only when base URL, model and `FALLBACK_API_KEY` are all set.             |
+| `AI_PROVIDER_STRATEGY` | `cf-first` | `cf-first` (Workers AI; fallback on error, quota or 25 s timeout), `external-first`, `cf-only`, `external-only`.      |
+| `MCP_URL`              | `""`    | Remote MCP server (Streamable HTTP) used by the social livechat agent.                                                   |
+
+The fallback, persona prompt and MCP / social livechat settings can also be edited in `/admin` (`/api/settings`); saved values override these variables.
 
 The per-client burst limit is the `CHAT_RATE_LIMITER` binding (`[[ratelimits]]`, 20 requests / 60 s per site and client IP). Change `simple.limit` there; `namespace_id` must be unique among the rate limiters in your account.
 
@@ -296,6 +303,9 @@ Secrets (set with `bunx wrangler secret put NAME`):
 | Secret        | Purpose                                                                                                                                                                                 |
 |---------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ADMIN_TOKEN` | Bearer token for `/api/sites/*`. Required; management routes return `503` until it is set to a value of at least 16 characters (the `.dev.vars.example` value only works on localhost). |
+| `FALLBACK_API_KEY` | API key of the fallback LLM provider (optional). |
+| `MCP_TOKEN` | Bearer token of the MCP server (optional). |
+| `SETTINGS_KEY` | Key material for encrypting secrets saved in `/admin` (optional; defaults to `ADMIN_TOKEN`, so rotating `ADMIN_TOKEN` without it means re-entering those secrets). |
 
 Want a bigger model or a different embedding size? Change `CHAT_MODEL` / `EMBEDDING_MODEL` + `EMBEDDING_DIMENSIONS` in `src/services/ai.ts`, create a Vectorize index with the matching dimensions and re-crawl every site. `@cf/baai/bge-small-en-v1.5` (384 dims, English only) fits ~2.7x more chunks in the free Vectorize storage.
 
@@ -321,11 +331,16 @@ Notes:
 
 | Method   | Path                         | Auth         | Description                                      |
 |----------|------------------------------|--------------|--------------------------------------------------|
-| `GET`    | `/api/health`                | none         | Liveness + model names.                          |
+| `GET`    | `/api/health`                | none         | Liveness and model names (no D1 read).          |
 | `POST`   | `/api/sites/index`           | admin        | Register a site and queue its sitemap URLs.      |
 | `POST`   | `/api/sites/:siteId/process` | admin        | Crawl and embed the next batch of pending pages. |
 | `GET`    | `/api/sites/:siteId/status`  | admin        | Indexing progress.                               |
-| `DELETE` | `/api/sites/:siteId`         | admin        | Remove a site, its pages, chat log and vectors.  |
+| `DELETE` | `/api/sites/:siteId`         | admin        | Remove a site, its pages, knowledge docs, chat log and vectors. |
+| `GET/POST/DELETE` | `/api/sites/:siteId/knowledge[/:docId]` | admin | Direct knowledge docs (price lists, FAQ, policies), indexed on save. |
+| `POST`   | `/api/sites/:siteId/test-chat` | admin      | Ask a question from the admin UI (no origin check, not logged). |
+| `GET/POST` | `/api/settings`            | admin        | Persona prompt, fallback LLM, MCP and social livechat settings. |
+| `POST`   | `/api/mcp/test-connection`   | admin        | MCP handshake + tool list.                       |
+| various  | `/api/social/*`              | admin        | Social inbox: conversations, drafts, manual send, poll. |
 | `POST`   | `/api/chat`                  | origin check | Ask a question (JSON or SSE stream).             |
 | `GET`    | `/widget.js`                 | none         | Embeddable widget.                               |
 
