@@ -1,13 +1,15 @@
 <div align="center">
 
-# DocFlare AI
+# Social Agentic AI Livechat
 
 **Open-source, zero-cost AI site search & chatbot widget. 100% Cloudflare native.**
+
+[English](README.md) | [Tiếng Việt](README.vi.md)
 
 Drop one `<script>` tag on your docs site and get a streaming RAG chatbot that answers from *your* content, with sources.
 No OpenAI key. No Pinecone. No servers. No bill.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/p10node/docflare-ai)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/liamakeup/social-agentic-livechat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Built with Hono](https://img.shields.io/badge/built%20with-Hono-E36002)](https://hono.dev)
 [![Cloudflare Workers](https://img.shields.io/badge/runs%20on-Cloudflare%20Workers-F6821F)](https://workers.cloudflare.com)
