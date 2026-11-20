@@ -1,4 +1,4 @@
-/*! DocFlare AI widget v0.1.0 | MIT | https://github.com/p10node/docflare-ai */
+/*! Social Agentic AI Livechat widget v0.1.0 | MIT | https://github.com/liamakeup/social-agentic-livechat */
 (function () {
   'use strict';
   var s = document.currentScript;
@@ -43,7 +43,7 @@
     '<div class="h"><i></i><b>' + esc(cfg.title) + '</b><button class="x" aria-label="Close">&times;</button></div>' +
     '<div class="m"></div>' +
     '<form class="f"><textarea rows="1" placeholder="' + esc(cfg.ph) + '" aria-label="Question"></textarea><button type="submit" aria-label="Send">&#10148;</button></form>' +
-    '<div class="w">Powered by <a href="https://github.com/p10node/docflare-ai" target="_blank" rel="noopener">DocFlare AI</a></div></div>';
+    '<div class="w">Powered by <a href="https://github.com/liamakeup/social-agentic-livechat" target="_blank" rel="noopener">Social Agentic AI Livechat</a></div></div>';
 
   var $ = function (q) { return root.querySelector(q); };
   var fab = $('.fab'), panel = $('.p'), msgs = $('.m'), form = $('.f'), ta = $('textarea'), send = $('.f button');

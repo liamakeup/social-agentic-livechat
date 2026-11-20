@@ -1,5 +1,5 @@
 {
-  "name": "docflare-ai",
+  "name": "social-agentic-livechat",
   "version": "0.1.0",
   "description": "Open-source, zero-cost AI site search & chatbot widget running 100% on Cloudflare Workers, Workers AI, Vectorize and D1.",
   "private": true,
@@ -7,10 +7,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/p10node/docflare-ai.git"
+    "url": "https://github.com/liamakeup/social-agentic-livechat.git"
   },
-  "homepage": "https://github.com/p10node/docflare-ai#readme",
-  "bugs": "https://github.com/p10node/docflare-ai/issues",
+  "homepage": "https://github.com/liamakeup/social-agentic-livechat#readme",
+  "bugs": "https://github.com/liamakeup/social-agentic-livechat/issues",
   "keywords": [
     "cloudflare",
     "cloudflare-workers",

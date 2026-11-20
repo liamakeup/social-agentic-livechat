@@ -1,7 +1,7 @@
-# DocFlare AI - Cloudflare Worker configuration
+# Social Agentic AI Livechat - Cloudflare Worker configuration
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/
 
-name = "docflare-ai"
+name = "social-agentic-livechat"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 

@@ -22,7 +22,7 @@ No OpenAI key. No Pinecone. No servers. No bill.
 
 | Chat widget embedded in a docs site                                                 | Admin UI (`/admin`)                                                                           |
 |-------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
-| ![DocFlare AI chat widget streaming an answer with sources](docs/images/widget.png) | ![DocFlare AI admin UI showing indexing progress and recent questions](docs/images/admin.png) |
+| ![Chat widget streaming an answer with sources](docs/images/widget.png) | ![Admin UI showing indexing progress and recent questions](docs/images/admin.png) |
 
 Streaming answers with source chips on the left; the built-in admin page for registering sitemaps, driving indexing and reviewing what users ask on the right.
 
@@ -39,7 +39,7 @@ Hosted "chat with your docs" widgets (Chatbase, CustomGPT, Mendable, ...) charge
 | Background indexing | **Cron Triggers**                                                           | included                               |
 | Widget hosting      | **Static Assets**                                                           | included                               |
 
-DocFlare AI wires them together into a single Worker you deploy with one command.
+Social Agentic AI Livechat wires them together into a single Worker you deploy with one command.
 
 ## Features
 

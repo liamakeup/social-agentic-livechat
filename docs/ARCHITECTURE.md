@@ -1,4 +1,4 @@
-# DocFlare AI Architecture
+# Social Agentic AI Livechat Architecture
 
 This document explains how the pieces fit together, why the design looks the way it does, and where the free-tier constraints shaped it.
 

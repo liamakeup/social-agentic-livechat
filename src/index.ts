@@ -1,5 +1,5 @@
 /**
- * DocFlare AI - Hono application entrypoint.
+ * Social Agentic AI Livechat - Hono application entrypoint.
  *
  * Routes:
  *   GET    /api/health                   liveness + model info
@@ -228,7 +228,7 @@ app.notFound((c) => c.json({ error: 'Not found', code: 'not_found' }, 404));
 app.get('/api/health', (c) =>
   c.json({
     ok: true,
-    service: 'docflare-ai',
+    service: 'social-agentic-livechat',
     models: { embedding: EMBEDDING_MODEL, chat: CHAT_MODEL, rerank: loadConfig(c.env).rerank ? RERANK_MODEL : null },
     time: new Date().toISOString(),
   }),

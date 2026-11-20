@@ -1,5 +1,5 @@
 /**
- * Unit tests for the pure, runtime-independent parts of DocFlare AI.
+ * Unit tests for the pure, runtime-independent parts of Social Agentic AI Livechat.
  * Run with `bun test`. Everything that needs Workers bindings (AI, Vectorize, D1) is exercised via
  * `wrangler dev` instead. Bun ships a native HTMLRewriter, so page extraction is covered here.
  */

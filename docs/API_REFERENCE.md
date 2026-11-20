@@ -1,4 +1,4 @@
-# DocFlare AI API Reference
+# Social Agentic AI Livechat API Reference
 
 Base URL: `https://docflare-ai.<your-subdomain>.workers.dev` (or your custom domain).
 
