@@ -1,7 +1,7 @@
 # Social Agentic AI Livechat - Cloudflare Worker configuration
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/
 
-name = "social-agentic-livechat"
+name = "agent"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 
