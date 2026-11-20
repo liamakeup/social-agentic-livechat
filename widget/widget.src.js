@@ -2,10 +2,10 @@
 (function () {
   'use strict';
   var s = document.currentScript;
-  if (!s || window.__docflare) return;
-  window.__docflare = 1;
+  if (!s || window.__socialLivechat) return;
+  window.__socialLivechat = 1;
   var d = s.dataset, siteId = d.siteId;
-  if (!siteId) { console.error('[DocFlare] data-site-id is required'); return; }
+  if (!siteId) { console.error('[Social Livechat] data-site-id is required'); return; }
   var api = (d.api || new URL(s.src, location.href).origin).replace(/\/$/, '');
   var cfg = {
     title: d.title || 'Ask AI',
@@ -35,7 +35,7 @@
   var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/></svg>';
 
   var host = document.createElement('div');
-  host.id = 'docflare-ai';
+  host.id = 'social-agentic-livechat';
   var root = host.attachShadow({ mode: 'open' });
   root.innerHTML = '<style>' + CSS + '</style>' +
     '<button class="fab" aria-label="Open ' + esc(cfg.title) + '">' + ICON + '</button>' +
@@ -170,8 +170,8 @@
   function mount() { document.body.appendChild(host); }
   document.body ? mount() : document.addEventListener('DOMContentLoaded', mount);
 
-  // Public API: window.DocFlare.open() / close() / ask('question')
-  window.DocFlare = {
+  // Public API: window.SocialLivechat.open() / close() / ask('question')
+  window.SocialLivechat = {
     open: function () { toggle(true); },
     close: function () { toggle(false); },
     ask: function (q) { q = String(q == null ? '' : q).trim(); toggle(true); if (q && !busy) ask(q); }

@@ -1,6 +1,6 @@
 # Social Agentic AI Livechat API Reference
 
-Base URL: `https://docflare-ai.<your-subdomain>.workers.dev` (or your custom domain).
+Base URL: `https://agent.<your-subdomain>.workers.dev` (or your custom domain).
 
 All request and response bodies are JSON unless stated otherwise. Timestamps are UTC ISO-8601.
 
@@ -207,8 +207,8 @@ Answer a question using the site's indexed content.
   "question": "How do I deploy to production?",
   "stream": true,
   "history": [
-    { "role": "user", "content": "What is DocFlare?" },
-    { "role": "assistant", "content": "DocFlare is …" }
+    { "role": "user", "content": "What is Social Agentic AI Livechat?" },
+    { "role": "assistant", "content": "It is …" }
   ]
 }
 ```
@@ -324,7 +324,7 @@ Settings editable from the admin UI, stored in D1 (`app_settings`). Environment 
 
 `POST` takes any subset of the same groups plus the write-only secrets `fallback.apiKey` and `mcp.token`, and returns the shape above. Secrets are AES-GCM encrypted at rest (key derived from `SETTINGS_KEY`, else `ADMIN_TOKEN`) and never returned. For a secret, an omitted field or `""` keeps the stored value, `null` clears it (also hiding an env-var value), any other string replaces it. If a stored secret no longer decrypts (`SETTINGS_KEY`, or without it `ADMIN_TOKEN`, was rotated) it is treated as unset and `apiKeyUndecryptable` / `tokenUndecryptable` is `true` until the secret is saved again; the admin page shows a warning. Changing the host (host and port) of `mcp.url`, including clearing the URL, without supplying `mcp.token` in the same request clears the stored MCP token, so a token is never sent to a server it was not entered for (host A → `""` → host B ends without a token); a new path on the same host keeps it.
 
-Validation (`400 invalid_settings`): `systemPrompt` ≤ 4000 characters (when set it replaces the "You are DocFlare…" line of the prompt; the grounding rules stay); `strategy` ∈ `cf-first | external-first | cf-only | external-only`; `baseUrl` / `mcp.url` https (http only for localhost) or `""` to clear; `socialMode` ∈ `off | draft | auto`; `pollIntervalMinutes` integer 1–60; `maxRepliesPerTick` integer 1–10; tool names `[A-Za-z0-9_.:/-]`; when `socialMode` is not `off`, `mcp.url` must be set and `socialSiteId` must be a registered site. Switching `socialMode` from `off` to `draft`/`auto` records `socialEnabledAt`: customer messages older than that are never answered.
+Validation (`400 invalid_settings`): `systemPrompt` ≤ 4000 characters (when set it replaces the "You are a friendly and precise assistant for …" line of the prompt; the grounding rules stay); `strategy` ∈ `cf-first | external-first | cf-only | external-only`; `baseUrl` / `mcp.url` https (http only for localhost) or `""` to clear; `socialMode` ∈ `off | draft | auto`; `pollIntervalMinutes` integer 1–60; `maxRepliesPerTick` integer 1–10; tool names `[A-Za-z0-9_.:/-]`; when `socialMode` is not `off`, `mcp.url` must be set and `socialSiteId` must be a registered site. Switching `socialMode` from `off` to `draft`/`auto` records `socialEnabledAt`: customer messages older than that are never answered.
 
 The fallback LLM is used only when `baseUrl`, `model` and the API key are all set; otherwise every strategy behaves as Workers AI only.
 
@@ -381,7 +381,7 @@ Message `status`:
 The embeddable widget (minified, ~9 KB, `Cache-Control: public, max-age=3600`). Configuration is passed through `data-*` attributes on the script tag; see the README for the full list.
 
 ```html
-<script src="https://docflare-ai.<your-subdomain>.workers.dev/widget.js" data-site-id="my-docs" defer></script>
+<script src="https://agent.<your-subdomain>.workers.dev/widget.js" data-site-id="my-docs" defer></script>
 ```
 
 ---
@@ -399,12 +399,12 @@ Static admin page (`public/admin.html`). Enter the `ADMIN_TOKEN`; it is kept in 
 ```yaml
 openapi: 3.1.0
 info:
-  title: DocFlare AI
+  title: Social Agentic AI Livechat
   version: 0.1.0
   description: Zero-cost AI site search & chatbot running on Cloudflare Workers, Workers AI, Vectorize and D1.
   license: { name: MIT }
 servers:
-  - url: https://docflare-ai.{subdomain}.workers.dev
+  - url: https://agent.{subdomain}.workers.dev
     variables: { subdomain: { default: your-subdomain } }
 components:
   securitySchemes:

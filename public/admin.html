@@ -276,7 +276,7 @@
             <button type="button" data-reload-settings>Tải lại</button>
           </div>
           <div>
-            <label for="aiPrompt">Thay cho câu giới thiệu mặc định "You are DocFlare…" (quy tắc bám tài liệu vẫn giữ nguyên). Để trống = mặc định.</label>
+            <label for="aiPrompt">Thay cho câu giới thiệu mặc định "You are a friendly and precise assistant for …" (quy tắc bám tài liệu vẫn giữ nguyên). Để trống = mặc định.</label>
             <textarea id="aiPrompt" rows="6" maxlength="4000" placeholder="Bạn là chuyên viên tư vấn của tiệm trang điểm…"></textarea>
             <span class="cnt" id="aiPromptCount">0 / 4.000 ký tự</span>
           </div>
@@ -401,7 +401,7 @@
       var $ = function (s, r) { return (r || document).querySelector(s); };
       var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
       var tokenEl = $('#token'), sitesEl = $('#sites'), logEl = $('#log');
-      var token = sessionStorage.getItem('docflare_admin_token') || '';
+      var token = sessionStorage.getItem('sal_admin_token') || '';
       var running = {};
       var sitesCache = [];
       var settings = null;
@@ -413,8 +413,8 @@
 
       // Theme: ?theme=dark|light, then saved preference, then system.
       var qs = new URLSearchParams(location.search);
-      var theme = qs.get('theme') || lsGet('docflare_admin_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      function setTheme(t) { theme = t; document.documentElement.setAttribute('data-theme', t); lsSet('docflare_admin_theme', t); }
+      var theme = qs.get('theme') || lsGet('sal_admin_theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      function setTheme(t) { theme = t; document.documentElement.setAttribute('data-theme', t); lsSet('sal_admin_theme', t); }
       setTheme(theme);
       $('#theme').onclick = function () { setTheme(theme === 'dark' ? 'light' : 'dark'); };
 
@@ -466,7 +466,7 @@
       /* ================= Tabs ================= */
       var TABS = ['livechat', 'knowledge', 'ai', 'mcp', 'sites'];
       var tabBtns = $$('#tabs [role="tab"]');
-      var activeTab = lsGet('docflare_admin_tab');
+      var activeTab = lsGet('sal_admin_tab');
       if (TABS.indexOf(activeTab) < 0) activeTab = 'livechat';
 
       function activate(name, focus, noRefresh) {
@@ -478,7 +478,7 @@
           if (on && focus) b.focus();
         });
         TABS.forEach(function (t) { $('#panel-' + t).hidden = t !== name; });
-        lsSet('docflare_admin_tab', name);
+        lsSet('sal_admin_tab', name);
         if (!noRefresh) refreshTab();
       }
       function refreshTab() {
@@ -1067,7 +1067,7 @@
         });
       }
       $('#connect').onclick = function () {
-        token = tokenEl.value.trim(); sessionStorage.setItem('docflare_admin_token', token);
+        token = tokenEl.value.trim(); sessionStorage.setItem('sal_admin_token', token);
         boot();
       };
       tokenEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') $('#connect').click(); });

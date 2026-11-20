@@ -4,7 +4,7 @@
  */
 import type { ExtractedPage, TextChunk } from '../types';
 
-const USER_AGENT = 'Mozilla/5.0 (compatible; DocFlareBot/1.0; +https://github.com/p10node/docflare-ai)';
+const USER_AGENT = 'Mozilla/5.0 (compatible; SocialLivechatBot/1.0; +https://github.com/liamakeup/social-agentic-livechat)';
 const FETCH_TIMEOUT_MS = 15_000;
 /** Sitemap indexes may point to many child sitemaps; cap how many we follow. */
 const MAX_CHILD_SITEMAPS = 25;
@@ -55,7 +55,7 @@ const SKIP_SELECTORS = [
 /** Longest meta description kept (prepended to a page's first chunk for retrieval). */
 const MAX_DESCRIPTION_CHARS = 300;
 /** Marker set on skipped elements so one element matching several skip selectors is counted once. */
-const SKIP_MARKER_ATTR = 'data-docflare-skip';
+const SKIP_MARKER_ATTR = 'data-livechat-skip';
 
 /** Block-level elements: a newline is inserted before them so sentences do not glue together. */
 const BLOCK_SELECTORS = [

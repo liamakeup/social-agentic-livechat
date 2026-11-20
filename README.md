@@ -104,8 +104,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design and [docs/A
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/p10node/docflare-ai.git
-cd docflare-ai
+git clone https://github.com/liamakeup/social-agentic-livechat.git
+cd social-agentic-livechat
 bun install
 bunx wrangler login
 ```
@@ -161,7 +161,7 @@ bunx wrangler secret put ADMIN_TOKEN
 bun run deploy
 ```
 
-`bun run deploy` builds the widget and deploys (the schema was applied in step 2; re-run `bun run db:migrate` whenever `migrations/` gains a new file). Wrangler prints your Worker URL, e.g. `https://docflare-ai.<your-subdomain>.workers.dev`. Open it to see the demo page with the widget mounted.
+`bun run deploy` builds the widget and deploys (the schema was applied in step 2; re-run `bun run db:migrate` whenever `migrations/` gains a new file). Wrangler prints your Worker URL, e.g. `https://agent.<your-subdomain>.workers.dev`. Open it to see the demo page with the widget mounted.
 
 > **Deploy to Cloudflare button**: the button at the top of this README clones the repo into your GitHub account, provisions the Worker, D1 database and Vectorize index from `wrangler.toml`, asks for `ADMIN_TOKEN` (from `.dev.vars.example`) and runs `bun run deploy`. Two values the wizard cannot read from `wrangler.toml`:
 >
@@ -171,7 +171,7 @@ bun run deploy
 > The build does not apply the D1 schema (the build token has no D1 access), so run the migration once from your new repo after the first deploy. Cloudflare writes your `database_id` into that repo's `wrangler.toml` while provisioning, so no `.env` is needed (if it still shows the placeholder, do step 2):
 >
 > ```bash
-> git clone https://github.com/<you>/docflare-ai.git && cd docflare-ai
+> git clone https://github.com/<you>/social-agentic-livechat.git && cd social-agentic-livechat
 > bun install && bunx wrangler login
 > bun run db:migrate
 > bunx wrangler vectorize get docflare-index-m3   # expect dimensions: 1024, metric: cosine
@@ -182,7 +182,7 @@ bun run deploy
 ## Index your documentation
 
 ```bash
-export WORKER_URL="https://docflare-ai.<your-subdomain>.workers.dev"
+export WORKER_URL="https://agent.<your-subdomain>.workers.dev"
 export ADMIN_TOKEN="the-token-you-set"
 
 curl -X POST "$WORKER_URL/api/sites/index" \
@@ -205,7 +205,7 @@ Response:
 }
 ```
 
-Prefer a UI? Open `https://docflare-ai.<your-subdomain>.workers.dev/admin`, paste the admin token and use the **Register / re-index a site** form. The same page shows progress bars per site, an **Index all pending** button that loops over `/process` until the queue is empty, and the recent questions log.
+Prefer a UI? Open `https://agent.<your-subdomain>.workers.dev/admin`, paste the admin token and use the **Register / re-index a site** form. The same page shows progress bars per site, an **Index all pending** button that loops over `/process` until the queue is empty, and the recent questions log.
 
 Pages are now crawled automatically, a few per minute, by the cron trigger. To finish faster, drive the queue yourself from the CLI:
 
@@ -224,7 +224,7 @@ curl "$WORKER_URL/api/sites/my-docs/status" -H "Authorization: Bearer $ADMIN_TOK
 
 Re-running `/api/sites/index` for the same `siteId` re-queues every page and deletes pages (and their vectors) that are no longer in the sitemap, so a cron job or CI step can keep the index fresh. The registered `domain` is kept when the request omits it. Vectorize is eventually consistent: freshly upserted chunks become searchable within a few seconds.
 
-> After upgrading DocFlare to a version that changes chunking (see the changelog in commit messages), re-index every site once (**Re-crawl sitemap** in the admin UI or `POST /api/sites/index`) so pages are re-chunked. Old vectors keep working until then.
+> After upgrading to a version that changes chunking (see the changelog in commit messages), re-index every site once (**Re-crawl sitemap** in the admin UI or `POST /api/sites/index`) so pages are re-chunked. Old vectors keep working until then.
 
 ## Upgrading an existing deployment
 
@@ -246,7 +246,7 @@ Then re-index every site (**Re-crawl sitemap** in `/admin`, or `POST /api/sites/
 Add one line before `</body>` on any page of the registered domain:
 
 ```html
-<script src="https://docflare-ai.<your-subdomain>.workers.dev/widget.js"
+<script src="https://agent.<your-subdomain>.workers.dev/widget.js"
         data-site-id="my-docs"
         defer></script>
 ```
@@ -264,12 +264,12 @@ Add one line before `</body>` on any page of the registered domain:
 | `data-placeholder` | `Ask a question about these docs…` | Input placeholder.                                                            |
 | `data-welcome`     | `Hi! Ask me anything…`             | First assistant message.                                                      |
 
-A tiny JavaScript API is exposed as `window.DocFlare`:
+A tiny JavaScript API is exposed as `window.SocialLivechat`:
 
 ```js
-DocFlare.open();            // open the panel
-DocFlare.close();
-DocFlare.ask('How do I deploy?');   // open and submit a question
+SocialLivechat.open();            // open the panel
+SocialLivechat.close();
+SocialLivechat.ask('How do I deploy?');   // open and submit a question
 ```
 
 Only pages served from the site's registered `domain` (and anything in `ALLOWED_ORIGINS`) can call `/api/chat` for that `siteId`. Requests from other origins get a `403`. Register `*.example.com` as the domain to cover the apex and every subdomain.
@@ -386,7 +386,7 @@ To cut the cost per question:
 ## Project structure
 
 ```text
-docflare-ai/
+social-agentic-livechat/
 ├── docs/
 │   ├── images/               # README screenshots
 │   ├── ARCHITECTURE.md       # System design & RAG data flow

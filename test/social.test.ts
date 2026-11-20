@@ -12,7 +12,7 @@ import type { Env } from '../src/types';
 import { createCtx, createEnv } from './helpers';
 import { installFakeMcp, jsonContent } from './mcp-server';
 
-const REMOTE = 'https://docflare-ai.example.workers.dev';
+const REMOTE = 'https://agent.example.workers.dev';
 let restore: () => void = () => {};
 afterEach(() => restore());
 

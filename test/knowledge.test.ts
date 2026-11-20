@@ -8,7 +8,7 @@ import type { Env } from '../src/types';
 import { EMBEDDING_DIMENSIONS } from '../src/services/ai';
 import { createCtx, createEnv } from './helpers';
 
-const REMOTE = 'https://docflare-ai.example.workers.dev';
+const REMOTE = 'https://agent.example.workers.dev';
 
 async function call(env: Env, path: string, method = 'GET', body?: unknown) {
   const res = await worker.fetch(

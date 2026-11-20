@@ -6,7 +6,7 @@ import { loadSettings } from '../src/services/settings';
 import type { Env } from '../src/types';
 import { createCtx, createEnv } from './helpers';
 
-const REMOTE = 'https://docflare-ai.example.workers.dev';
+const REMOTE = 'https://agent.example.workers.dev';
 const API_KEY = 'sk-live-very-secret-123';
 const MCP_TOKEN = 'mcp-token-very-secret-456';
 
@@ -175,8 +175,8 @@ describe('POST /api/settings', () => {
     const persona = (await loadSettings(env)).prompt.systemPrompt;
     const system = buildRagMessages('q', [], [], 'shop.example.com', persona)[0]!.content;
     expect(system).toStartWith('Bạn là trợ lý của tiệm makeup Lia.\n\nRules:');
-    expect(system).not.toContain('You are DocFlare');
-    expect(buildRagMessages('q', [], [], 'shop.example.com')[0]!.content).toStartWith('You are DocFlare');
+    expect(system).not.toContain('You are a friendly and precise assistant');
+    expect(buildRagMessages('q', [], [], 'shop.example.com')[0]!.content).toStartWith('You are a friendly and precise assistant for shop.example.com');
   });
 
   test('moving mcp.url to another host without a new token clears the stored token', async () => {

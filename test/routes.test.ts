@@ -7,7 +7,7 @@ import worker from '../src/index';
 import type { Env } from '../src/types';
 import { createCtx, createEnv, mockFetch, sitemapResponse } from './helpers';
 
-const REMOTE = 'https://docflare-ai.example.workers.dev';
+const REMOTE = 'https://agent.example.workers.dev';
 const LOCAL = 'http://localhost:8787';
 const SITEMAP = 'https://docs.example.com/sitemap.xml';
 

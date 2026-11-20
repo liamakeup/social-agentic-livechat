@@ -1,4 +1,4 @@
--- DocFlare AI - initial D1 schema
+-- Social Agentic AI Livechat - initial D1 schema
 -- Apply with: npx wrangler d1 migrations apply docflare-db --remote
 
 -- A "site" is one indexed documentation website (one tenant / one widget).

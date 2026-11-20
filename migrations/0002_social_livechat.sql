@@ -1,4 +1,4 @@
--- DocFlare AI - direct knowledge docs, admin-editable settings and social livechat
+-- Social Agentic AI Livechat - direct knowledge docs, admin-editable settings and social livechat
 -- Apply with: bun run db:migrate (remote) / bun run db:migrate:local
 
 -- Knowledge entered directly in the admin UI (price lists, FAQ, policies) instead of crawled from a sitemap.

@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "docflare-ai",
+      "name": "social-agentic-livechat",
       "dependencies": {
         "hono": "^4.13.0",
       },

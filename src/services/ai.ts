@@ -176,7 +176,7 @@ export async function rerankChunks(ai: Ai, query: string, chunks: RetrievedChunk
 // ---------------------------------------------------------------------------
 
 /** First line of the system prompt; replaced by the admin-configured persona when one is set. */
-const DEFAULT_PERSONA = 'You are DocFlare, a friendly and precise documentation assistant for {{DOMAIN}}.';
+const DEFAULT_PERSONA = 'You are a friendly and precise assistant for {{DOMAIN}}.';
 
 const SYSTEM_PROMPT_RULES = `Rules:
 - Answer ONLY using the documentation excerpts below. Never guess or use outside knowledge.

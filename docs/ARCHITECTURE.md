@@ -221,7 +221,7 @@ The full answer is accumulated while streaming and written to D1 after the strea
 
 ## Free-tier guardrails summary
 
-| Limit                  | How DocFlare stays under it                                                                                                             |
+| Limit                  | How the service stays under it                                                                                                             |
 |------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
 | 10 ms CPU / invocation | Small crawl batches, native `HTMLRewriter`, chunk text stored in vector metadata (no joins at query time)                               |
 | 10k neurons / day      | Cheap embedding model, LLM skipped when retrieval is empty, `max_tokens` capped at 768, rate limits surfaced as `429` and retried later |

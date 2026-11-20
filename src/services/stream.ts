@@ -1,5 +1,5 @@
 /**
- * Chat SSE protocol: re-emits Workers AI tokens as DocFlare's own events.
+ * Chat SSE protocol: re-emits Workers AI tokens as this service's own events.
  *   event: meta   {id, sources}
  *   event: token  {text}
  *   event: done   {id}

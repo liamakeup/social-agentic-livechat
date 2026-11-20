@@ -1,4 +1,4 @@
--- DocFlare AI - queue lease + chat log retention
+-- Social Agentic AI Livechat - queue lease + chat log retention
 -- Apply with: bun run db:migrate (remote) / bun run db:migrate:local
 
 -- Pages are claimed (status = 'processing') before they are crawled. `attempts` counts claims, so a page
