@@ -44,6 +44,8 @@ export interface McpClientOptions {
    */
   sendTool?: string;
   timeoutMs?: number;
+  /** Transport for the HTTP requests (a service binding); defaults to the global `fetch`. */
+  fetcher?: { fetch(input: string, init?: RequestInit): Promise<Response> };
 }
 
 export interface McpTool {
@@ -199,12 +201,14 @@ export class RemoteMcpClient {
     try {
       let res: Response;
       try {
-        res = await fetch(this.options.url, {
+        const transport = this.options.fetcher;
+        const init: RequestInit = {
           method: 'POST',
           headers: this.headers(),
           body: JSON.stringify(message),
           signal: controller.signal,
-        });
+        };
+        res = await (transport ? transport.fetch(this.options.url, init) : fetch(this.options.url, init));
       } catch (err) {
         const aborted = err instanceof Error && err.name === 'AbortError';
         throw new McpError(aborted ? 'MCP request timed out' : 'MCP server unreachable', undefined, true);

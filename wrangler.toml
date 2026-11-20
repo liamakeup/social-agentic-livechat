@@ -73,6 +73,8 @@ FALLBACK_MODEL = ""
 AI_PROVIDER_STRATEGY = "cf-first"
 # Remote MCP server (Streamable HTTP) for the social livechat agent, e.g. "https://mcp.zernio.com/mcp".
 MCP_URL = ""
+# Host of the MCP URL routed through the MCP_SERVICE binding (see [[services]] below).
+MCP_SERVICE_HOST = "api.liamakeup.workers.dev"
 
 # Secrets (set with `bunx wrangler secret put <NAME>`, never commit them):
 #   ADMIN_TOKEN      - bearer token required by the /api/sites/* management endpoints. At least 16 characters;
@@ -81,6 +83,13 @@ MCP_URL = ""
 #   MCP_TOKEN        - bearer token of the MCP server (optional).
 #   SETTINGS_KEY     - key material used to encrypt secrets saved from the admin UI (optional; defaults to
 #                      ADMIN_TOKEN, so rotating ADMIN_TOKEN without it means re-entering those secrets).
+
+# Service binding to the Zernio MCP gateway Worker ("api") on the same account. Workers on one account
+# cannot call each other over *.workers.dev (404), so MCP requests to MCP_SERVICE_HOST use this binding.
+# Remove both if your MCP server is on another account or host.
+[[services]]
+binding = "MCP_SERVICE"
+service = "api"
 
 [observability]
 enabled = true

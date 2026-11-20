@@ -44,6 +44,14 @@ export interface Env {
   MCP_URL?: string;
   /** Secret: bearer token for the MCP server. */
   MCP_TOKEN?: string;
+  /**
+   * Optional service binding to the Worker that serves the MCP endpoint. Workers on the same account
+   * cannot reach each other over *.workers.dev (404), so requests whose host equals MCP_SERVICE_HOST go
+   * through this binding instead of the public internet.
+   */
+  MCP_SERVICE?: Fetcher;
+  /** Hostname of the MCP URL routed through MCP_SERVICE, e.g. "api.example.workers.dev". */
+  MCP_SERVICE_HOST?: string;
   /** Secret: key material for encrypting secrets saved from the admin UI (defaults to ADMIN_TOKEN). */
   SETTINGS_KEY?: string;
 }

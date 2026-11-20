@@ -74,8 +74,20 @@ export function wantsHuman(text: string): boolean {
   return HANDOFF_PHRASES.some((p) => normalized.includes(p)) || HANDOFF_WORDS.test(normalized);
 }
 
-export function createMcpClient(settings: AppSettings): RemoteMcpClient {
+/** The MCP_SERVICE binding when the MCP URL's host is MCP_SERVICE_HOST, else undefined (public fetch). */
+export function mcpTransport(url: string, env?: Pick<Env, 'MCP_SERVICE' | 'MCP_SERVICE_HOST'>): Fetcher | undefined {
+  const host = env?.MCP_SERVICE_HOST?.trim().toLowerCase();
+  if (!env?.MCP_SERVICE || !host) return undefined;
+  try {
+    return new URL(url).hostname.toLowerCase() === host ? env.MCP_SERVICE : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function createMcpClient(settings: AppSettings, env?: Pick<Env, 'MCP_SERVICE' | 'MCP_SERVICE_HOST'>): RemoteMcpClient {
   return new RemoteMcpClient({
+    fetcher: mcpTransport(settings.mcp.url, env),
     url: settings.mcp.url,
     token: settings.mcp.token || undefined,
     proxyTool: settings.mcp.proxyTool || undefined,
@@ -218,7 +230,7 @@ export async function pollSocialInbox(
   env: Env,
   config: AppConfig,
   settings: AppSettings,
-  client: RemoteMcpClient = createMcpClient(settings),
+  client: RemoteMcpClient = createMcpClient(settings, env),
 ): Promise<PollSummary> {
   const mcp = settings.mcp;
   const summary: PollSummary = {
@@ -453,7 +465,7 @@ export async function sendSocialMessageAsAdmin(
   messageId: string,
   replyText: string | null,
   options: { confirmUnknown?: boolean } = {},
-  client: RemoteMcpClient = createMcpClient(settings),
+  client: RemoteMcpClient = createMcpClient(settings, env),
 ): Promise<SocialMessageRow> {
   if (!settings.mcp.url) throw new HttpError(409, 'Set the MCP server URL first', 'mcp_not_configured');
   const db = new Db(env.DB);

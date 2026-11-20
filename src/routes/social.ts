@@ -82,7 +82,7 @@ admin.post('/mcp/test-connection', async (c) => {
   const settings = await loadSettings(c.env);
   if (!settings.mcp.url) return c.json({ ok: false, error: 'MCP server URL is not set' });
   try {
-    const client = createMcpClient(settings);
+    const client = createMcpClient(settings, c.env);
     const { serverName } = await client.initialize();
     const tools = await client.listTools();
     return c.json({ ok: true, serverName, tools: tools.map((t) => t.name) });
