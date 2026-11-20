@@ -8,7 +8,7 @@
  *   then runs wrangler with `--config wrangler.local.toml`.
  *
  * Usage: bun scripts/wrangler.ts deploy
- *        bun scripts/wrangler.ts d1 migrations apply docflare-db --remote
+ *        bun scripts/wrangler.ts d1 migrations apply social-livechat-db --remote
  */
 import { readFileSync, writeFileSync } from "node:fs";
 

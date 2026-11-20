@@ -113,17 +113,17 @@ Chạy các lệnh sau trong terminal để tạo Vectorize Index và D1 Databas
 
 ```bash
 # 1. Tạo Vectorize Index 1024-dim với chuẩn cosine
-bunx wrangler vectorize create docflare-index-m3 --dimensions=1024 --metric=cosine
+bunx wrangler vectorize create social-livechat-index-m3 --dimensions=1024 --metric=cosine
 
 # 2. Tạo D1 Database
-bunx wrangler d1 create docflare-db
+bunx wrangler d1 create social-livechat-db
 ```
 
 Sau khi chạy lệnh tạo D1, Cloudflare sẽ in ra `database_id`. Hãy sao chép mã này và dán vào file `wrangler.toml`:
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "docflare-db"
+database_name = "social-livechat-db"
 database_id = "DÁN_DATABASE_ID_CỦA_BẠN_VÀO_ĐÂY"
 ```
 

@@ -10,19 +10,19 @@ compatibility_date = "2026-10-01"
 binding = "AI"
 
 # Vectorize index: 1024 dimensions (bge-m3, multilingual), cosine metric.
-# Create it with: bunx wrangler vectorize create docflare-index-m3 --dimensions=1024 --metric=cosine
+# Create it with: bunx wrangler vectorize create social-livechat-index-m3 --dimensions=1024 --metric=cosine
 # (Deployments from before the bge-m3 switch used the 384-dim "docflare-index"; see README "Upgrading".)
 [[vectorize]]
 binding = "VECTOR_INDEX"
-index_name = "docflare-index-m3"
+index_name = "social-livechat-index-m3"
 
 # D1 database for sites, pages and chat history.
-# Create it with: bunx wrangler d1 create docflare-db
+# Create it with: bunx wrangler d1 create social-livechat-db
 # Then either paste the database_id below, or put it in .env as D1_DATABASE_ID (see README)
 # to keep it out of git: `bun run deploy` / `bun run db:migrate` then use a generated wrangler.local.toml.
 [[d1_databases]]
 binding = "DB"
-database_name = "docflare-db"
+database_name = "social-livechat-db"
 database_id = "REPLACE_WITH_YOUR_D1_ID"
 migrations_dir = "migrations"
 

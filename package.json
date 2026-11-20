@@ -47,10 +47,10 @@
     "deploy": "bun run build:widget && bun scripts/wrangler.ts deploy",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "db:create": "wrangler d1 create docflare-db",
+    "db:create": "wrangler d1 create social-livechat-db",
     "db:migrate": "bun scripts/wrangler.ts d1 migrations apply DB --remote",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "vectorize:create": "wrangler vectorize create docflare-index-m3 --dimensions=1024 --metric=cosine",
+    "vectorize:create": "wrangler vectorize create social-livechat-index-m3 --dimensions=1024 --metric=cosine",
     "secret:admin": "wrangler secret put ADMIN_TOKEN",
     "cf-typegen": "wrangler types"
   },

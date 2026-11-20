@@ -27,8 +27,8 @@ This document explains how the pieces fit together, why the design looks the way
 
 ```toml
 [ai]              binding = "AI"            # Workers AI
-[[vectorize]]     binding = "VECTOR_INDEX"  # 1024-dim cosine index "docflare-index-m3"
-[[d1_databases]]  binding = "DB"            # "docflare-db"
+[[vectorize]]     binding = "VECTOR_INDEX"  # 1024-dim cosine index "social-livechat-index-m3"
+[[d1_databases]]  binding = "DB"            # "social-livechat-db"
 [assets]          binding = "ASSETS"        # ./public
 [triggers]        crons = ["* * * * *"]     # background indexer
 ```

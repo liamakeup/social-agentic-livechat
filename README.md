@@ -113,7 +113,7 @@ bunx wrangler login
 ### 2. Create the D1 database
 
 ```bash
-bunx wrangler d1 create docflare-db
+bunx wrangler d1 create social-livechat-db
 ```
 
 Copy the `database_id` from the output. Either paste it into `wrangler.toml`:
@@ -121,7 +121,7 @@ Copy the `database_id` from the output. Either paste it into `wrangler.toml`:
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "docflare-db"
+database_name = "social-livechat-db"
 database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # <- paste here
 ```
 
@@ -142,7 +142,7 @@ bun run db:migrate
 ### 3. Create the Vectorize index
 
 ```bash
-bunx wrangler vectorize create docflare-index-m3 --dimensions=1024 --metric=cosine
+bunx wrangler vectorize create social-livechat-index-m3 --dimensions=1024 --metric=cosine
 ```
 
 (1024 dimensions matches `@cf/baai/bge-m3`. The index name is already set in `wrangler.toml`.)
@@ -174,10 +174,10 @@ bun run deploy
 > git clone https://github.com/<you>/social-agentic-livechat.git && cd social-agentic-livechat
 > bun install && bunx wrangler login
 > bun run db:migrate
-> bunx wrangler vectorize get docflare-index-m3   # expect dimensions: 1024, metric: cosine
+> bunx wrangler vectorize get social-livechat-index-m3   # expect dimensions: 1024, metric: cosine
 > ```
 >
-> If the index is missing or has a different shape, run step 3 (delete it first with `bunx wrangler vectorize delete docflare-index-m3`) and redeploy. If the wizard did not ask for `ADMIN_TOKEN`, run step 4.
+> If the index is missing or has a different shape, run step 3 (delete it first with `bunx wrangler vectorize delete social-livechat-index-m3`) and redeploy. If the wizard did not ask for `ADMIN_TOKEN`, run step 4.
 
 ## Index your documentation
 
@@ -234,7 +234,7 @@ Run `bun run db:migrate` before `bun run deploy` whenever `migrations/` gained a
 Deployments from before the switch to `bge-m3` use a 384-dim index named `docflare-index`, which cannot hold 1024-dim vectors. The new index has a different name, so the old one stays untouched until you delete it:
 
 ```bash
-bunx wrangler vectorize create docflare-index-m3 --dimensions=1024 --metric=cosine
+bunx wrangler vectorize create social-livechat-index-m3 --dimensions=1024 --metric=cosine
 bun run db:migrate
 bun run deploy
 ```
@@ -313,7 +313,7 @@ Want a bigger model or a different embedding size? Change `CHAT_MODEL` / `EMBEDD
 
 ```bash
 cp .dev.vars.example .dev.vars          # sets ADMIN_TOKEN for local runs
-bunx wrangler d1 migrations apply docflare-db --local
+bunx wrangler d1 migrations apply social-livechat-db --local
 bun run dev                             # http://localhost:8787
 ```
 
